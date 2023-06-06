@@ -7,6 +7,10 @@
 Formal Verification
 *******************
 
+**Gedare:** *The writing style of some sections needs to be tweaked 
+to be less report-oriented ("We did/do this") 
+and more manual-oriented ("This is how to do...")*
+
 .. toctree::
 
     overview

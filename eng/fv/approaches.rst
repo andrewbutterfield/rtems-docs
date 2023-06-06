@@ -13,20 +13,20 @@ in a highly automated manner.
 This amounts to the tool having a command-line interface that covers
 all the features we require.
 One such feature is that the tool generates output that can be
-easily transformed into the formats
-used as part of the qualification datapack reports.
+easily transformed into the formats useful for qualification.
 Tools with GUI interfaces can be very helpful while developing
 and deploying formal models, as long as the models/tests/proofs
 can be re-run automatically via the command-line.
 
 Other important criteria concern the support available
-for for test generation support,
+for test generation support,
 and how close we can connect the formalism to actual C code.
 
 The final key criteria is whatever techniques we propose should fit in 
-with the RTEMS Project Mission Statement (Section 2 in this document).
+with the RTEMS Project Mission Statement, 
+in the Software Engineering manual.
 This requires, among other things, 
-that any tool we add to the tool-chain needs to be open-source.
+that any tool added to the tool-chain needs to be open-source.
 
 A more detailed report regarding the decisions we took can be found in
 :cite:`Butterfield:2021:FV1-200`.
@@ -180,8 +180,6 @@ to code level, and is specifically targeted to modelling software. It is one of
 the most widely used model-checkers, both in industry and education. It uses
 assertions, and linear-time temporal logic (LTL) to express properties of
 interest.
-
-It is open-source, and very easy to install, needing only cc and lex/yacc.
 
 Given a Promela model that checks key properties successfully,
 we can generated tests for a property P by asking

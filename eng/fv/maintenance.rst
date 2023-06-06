@@ -7,17 +7,9 @@
 Test Generation Maintenance
 ===========================
 
-**DEPRECATED**
+The procedure to be followed is as described in the section
+on Software Development Management.
 
-The standard RTEMS technique of emailing a patch-set for review shall be used.
-the basic principle is that any file modified as a result of changes, *including
-generated C test code* will be included in the patch-sets. A complication is
-that most model changes will apply to ``rtems-central``, while the resulting
-test code changes will take place in the ``rtems`` sub-module. Changes to the
-overall configuration (new testsuites mainly) may affect both respositories.
-**GB: In Section "9.6 Test Generation Maintenance" please refer to Section
-"Software Development Management" instead of hard-coding the patch
-submission process.**
 
 Key pathnames, as viewed from ``rtems-central``:
 

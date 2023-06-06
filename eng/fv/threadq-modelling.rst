@@ -94,8 +94,6 @@ Files in ``MrsP-Code/`` :
 Scoping
 ~~~~~~~
 
-
-
 Scoping is complete, and at first glance seems reasonable in size.
 We are looking at scenarios involving a number of processors and schedulers
 running a number of tasks of varying priorities that simply create,

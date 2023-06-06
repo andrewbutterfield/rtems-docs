@@ -6,15 +6,14 @@ Appendix: RTEMS Formal Model Guide
 **********************************
 
 Here we describe the various formal models of RTEMS that are currently in
-existence. The following were delivered as part of the ESA-sponsored activity,
-and are included in the initial set when the directory ``formal`` was added
-to ``rtems-central``:
+existence. The following  are included in the  directory ``formal`` 
+at the top-level in  ``rtems-central``:
 
-Chains API (ESA-sponsored Activity)
+Chains API 
     Models the unprotected chain append and get API calls in the Classic
     Chains API Guide. This was an early model to develop the basic methodology.
 
-Events Manager (ESA-sponsored Activity, M.Sc. Dissertation :cite:`Jennings:2021:FV` )
+Events Manager
     Models the behaviour of all the API calls in the Classic Events Manager API
     Guide. This had to tackle real concurrency and deal with multiple CPUs and priority
     issues.
@@ -23,16 +22,23 @@ A number of other Classic RTEMS Managers have been modelled and have had tests
 generated, as M.Sc. Dissertation topics. These have also been included in the initial set
 of models.
 
+Barrier Manager
+    Models the behaviour of all the API calls in then Classic Barrier Manager API.
 
-Barrier Manager (M.Sc. Dissertation :cite:`Jaskuc:2022:TESTGEN` )
-    Models the Classic Barrier Manager API.
-
-Message Manager (M.Sc. Dissertation :cite:`Lynch:2022:TESTGEN` )
-    Models the Classic Message Manager API.
+Message Manager 
+    Models the create, send and receive API calls in the Classic Message Manager API.
 
 
 Models of the MrsP scheduler thread queues, and the Semaphore Manager are currently in
 progress, and should appear at some point in the future.
+
+**Gedare** *This all reads like a project report, rather than a manual. 
+Although the references to the completed MSc dissertations are appreciated and 
+useful, they should be better integrated where the work that was done is 
+described within the manual itself. The start of this appendix should better 
+explain what is being shown here, i.e., 
+the detailed examples of the above modelings. 
+You might also link to the relevant sections.*
 
 .. _TestGenOverview:
 
@@ -110,7 +116,7 @@ Testing Chains
 The Chains API provides a doubly-linked list data-structure, optimised for fast
 operations in an SMP setting. We used it a proof of concept exercise.
 
-See https://docs.rtems.org/branches/master/c-user/chains.html
+See section Chains in the Classic API Guide.
 
 Model Directory: ``formal/promela/models/chains``
 

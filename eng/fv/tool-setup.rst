@@ -61,15 +61,10 @@ We will use this alias in what follows.
 Tool Configuration
 ------------------
 
-**The process described here makes changes to `rtems` directly rather than
-using the `spec` folder in `rtems-central`. There are already hooks in the
-`spec` folder that create ``model-0.yml`` with the right name, but this does
-not seem to have propagated to the `rtems` submodule. This should probably be 
-fixed**
-
 Tool configuration involves setting up a new testsuite in RTEMS, and providing
 information to ``tbuild`` that tells it where to find key locations, and some
 command-line arguments for some of the tools.
+There are scripts to assist with this in rtems-central.
 
 Testsuite Setup
 ^^^^^^^^^^^^^^^
