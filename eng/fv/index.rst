@@ -12,4 +12,4 @@ Formal Verification
     overview
     approaches
     promela-index
-    model-guide
+    threadq-modelling
