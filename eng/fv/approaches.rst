@@ -5,40 +5,39 @@
 Formal Verification Approaches
 ==============================
 
-We present here an overview of a range of formal methods and tools
+This is an overview of a range of formal methods and tools
 that look feasible for use with RTEMS.
 
-A key criterion for any proposed tool is the ability to deploy it
-in a highly automated manner.
-This amounts to the tool having a command-line interface that covers
-all the features we require.
+A key criterion for any proposed tool is the ability to deploy it in a highly
+automated manner. This amounts to the tool having a command-line interface that
+covers all the required features.
 One such feature is that the tool generates output that can be
 easily transformed into the formats useful for qualification.
 Tools with GUI interfaces can be very helpful while developing
 and deploying formal models, as long as the models/tests/proofs
 can be re-run automatically via the command-line.
 
-Other important criteria concern the support available
+Other important criteria concerns the support available
 for test generation support,
-and how close we can connect the formalism to actual C code.
+and how close the connection is between the formalism and actual C code.
 
-The final key criteria is whatever techniques we propose should fit in 
+The final key criteria is whatever techniques are proposed should fit in 
 with the RTEMS Project Mission Statement, 
 in the Software Engineering manual.
 This requires, among other things, 
 that any tool added to the tool-chain needs to be open-source.
 
-A more detailed report regarding the decisions we took can be found in
+A more detailed report regarding this can be found in
 :cite:`Butterfield:2021:FV1-200`.
 
 
-We start with a general overview of formal methods and testing,
-and discuss a number of formalisms and tools against the criteria above.
+Next is a general overview of formal methods and testing,
+and discusses a number of formalisms and tools against the criteria above.
 
 Formal Methods Overview
 -----------------------
 
-We can divide formal specification languages into the following groups:
+Formal specification languages can be divided into the following groups:
 
   Model-based:  e.g., Z, VDM, B
 
@@ -60,15 +59,15 @@ We can divide formal specification languages into the following groups:
 
   Process Algebras: e.g., CSP, CCS, pi-calculus, LOTOS
 
-    The model systems in terms of the sequence of externally observable
+    These model systems in terms of the sequence of externally observable
     events that they perform. There is no explicit definition of the abstract
     states, but their underlying semantics is given as a state machine,
-    where the states are deduced from the overall behaviour of the system,
-    and events denote transitions between these state. In general both the
+    where the states are deduced from the overall behavior of the system,
+    and events denote transitions between these states. In general both the
     number of such states and length of observed event sequences are unbounded.
     While temporal logics can be used to express properties, many process 
     algebras use their own notation to express desired properties by simpler
-    systems. A technique called bisimulation is used reason about the 
+    systems. A technique called bisimulation is used to reason about the 
     relationships between these.
 
   Most of the methods above start with formal specifications/models. Also 
@@ -88,32 +87,26 @@ We can divide formal specification languages into the following groups:
 
     Model checkers are tools that do exhaustive searches over models with a 
     finite number of states. These are most commonly used with the finite-state
-    methods, as well as the process algebras were some bound is put on the
+    methods, as well as the process algebras where some bound is put on the
     state-space. As model-checking is basically exhaustive testing, these are
     often the easiest way to get test generation from formal techniques.
 
-  Formal Development frameworks: e.g. TLA+, Frama-C, Key
+  Formal Development frameworks: e.g. TLA+, Frama-C, KeY
 
     There are also a number of frameworks that support a close connection
-    between a programming language, a formalism to specify desired behaviour
+    between a programming language, a formalism to specify desired behavior
     for programs in that language, as well as tools to support the reasoning 
     (proof, simulation, test).
-
-  
+ 
 Formal Methods actively considered
 ----------------------------------
 
 Given the emphasis on verifying RTEMS C code,
-we rapidly focussed in on freely available tools that could easily connect to C.
-These included: Frama-C, TLA+/PlusCal, Isabelle/HOL, and Promela/SPIN.
+the focus is on freely available tools that could easily connect to C.
+These include: Frama-C, TLA+/PlusCal, Isabelle/HOL, and Promela/SPIN.
 Further investigation ruled out TLA+/PlusCal because it is Java-based,
 and requires installing a Java Runtime Environment.
-
-Frama-C, Isabelle/HOL, and Promela/SPIN were all explored in more detail,
-and used in initial experiments to assess their suitability.
-A key decision was also made early in the project to start looking at how to use
-formal techniques to do test generation.
-
+Frama-C, Isabelle/HOL, and Promela/SPIN are discussed below in more detail,
 
 Frama-C
 ^^^^^^^
@@ -121,7 +114,7 @@ Frama-C
 Frama-C (frama-c.com) is a platform supporting a range of tools for analysing C
 code, including static analysers, support for functional specifications (ANSI-C
 Specification Language – ACSL), and links to theorem provers. Some of its
-analyses require code annotations, while other can extract useful information
+analyses require code annotations, while others can extract useful information
 from un-annotated code. It has a plug-in architecture, which makes it easy to
 extend. It is used extensively by Airbus.
 
@@ -131,7 +124,6 @@ An issue here was that Frama-C has many quite large dependencies.
 There was support for test generation, but it was not freely available.
 Another issue was that Frama-C only supported C99, and not C11
 (the issue is how to handle C11 Atomics in terms of their semantics).
-
 
 Isabelle/HOL
 ^^^^^^^^^^^^
@@ -144,13 +136,10 @@ mathematical theorems, covering number and set theory, algebra, analysis. It is
 based on the idea of a small trusted code kernel that defines an encapsulated
 datatype representing a theorem, which can only be constructed using methods in
 the kernel for that datatype, but which also scales effectively regardless of
-how many  theorems are proven.
+how many theorems are so proven.
 It is implemented using `polyml`, with the IDE implemented using Scala,
 is open-source, and is easy to install.
 However, like Frama-C, it is also a very large software suite.
-
-
-
 
 Formal Method actually used
 ---------------------------
@@ -167,13 +156,12 @@ Here they clearly state:
   to produce counterexamples
   in case a temporal property does not hold for a system model."
 
-
 Promela/SPIN
 ^^^^^^^^^^^^
 
 The current use of formal methods in RTEMS is based on using the Promela
 language to model key RTEMS features,
-in such a way that we can generate tests using the SPIN model checker
+in such a way that tests can be generated using the SPIN model checker
 (spinroot.com).
 Promela is quite a low-level modelling language that makes it easy to get close
 to code level, and is specifically targeted to modelling software. It is one of
@@ -182,8 +170,7 @@ assertions, and linear-time temporal logic (LTL) to express properties of
 interest.
 
 Given a Promela model that checks key properties successfully,
-we can generated tests for a property P by asking
-Spin to check the negations of those properties.
-There are ways to get Spin to generate multiple/all possible counterexamples,
+tests can be generated for a property *P* by asking
+SPIN to check the negation of that property.
+There are ways to get SPIN to generate multiple/all possible counterexamples,
 as well as getting it to find the shortest.
-
