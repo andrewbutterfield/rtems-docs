@@ -16,4 +16,4 @@ and more manual-oriented ("This is how to do...")*
     overview
     approaches
     promela-index
-    threadq-modelling
+

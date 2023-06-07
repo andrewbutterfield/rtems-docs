@@ -7,35 +7,28 @@
 Formal Tools Setup
 ==================
 
-A key requirement for methods and tools for RTEMS qualification was that they
-comply to a large degree with RTEMS community guidelines. We wanted to avoid
-having large complex tools with large library dependencies, and have tools and
-notations that would be easy to maintain.
-
-After reviewing a range of methods and tools, we settled on a technique based on
-the SPIN model checker :cite:`Holzmann:1997:SPIN`, with its modelling language
-called Promela (https://spinroot.com/). Promela is quite a low-level modelling
-language that makes it easy to get close to code level, and is specifically 
-targeted to modelling software. It is one of the most widely used 
-model-checkers, both in industry and education. 
-It uses linear-time temporal logic (:term:`LTL`) to express properties of interest.
-
-It is open-source (https://github.com/nimble-code/Spin), actively maintained,
-and very easy to install, needing only  a C compiler and the ``lex``/``yacc``
-utilities.
-
+The required formal tools consist of 
+the model checking software (Promela/SPIN),
+and the test generation software (spin2test/testbuilder).
 
 Installing Tools
 ----------------
 
-The test generation tools are found in ``formal/promela/src``, written for
-Python3. That directory contains ``requirements.txt`` that identifies the
-required Python libraries. A key requirement is the Coconut package, that
-defines a form of pattern-matching syntax for Python. Source files have
-extension ``.coco`` and are compiled into equivalent Python scripts.
+Installing Promela/SPIN
+^^^^^^^^^^^^^^^^^^^^^^^
 
-We use the Python virtual environment facility here, as seen elsewhere in the
-RTEMS ecosystem. To build the tools, enter ``formal/promela/src`` and issue the 
+Follow the installation instructions for Promela/Spin 
+at https://spinroot.com/spin/Man/README.html.
+
+There are references there to the Spin Distribution which is now on 
+Github (https://github.com/nimble-code/Spin).
+
+Installing Test Generation Tools
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The test generation tools are found in ``formal/promela/src``, written in
+Python3, and installed using a virtual envornment. 
+To build the tools, enter ``formal/promela/src`` and issue the 
 commands:
 
 .. code:: shell
@@ -45,18 +38,19 @@ commands:
   make py
 
 The test generation tools need to be used from within this Python virtual 
-environment. Use the ``deactivate` command to exit from it.
+environment. Use the ``deactivate`` command to exit from it.
 
 Test generation is managed at the top level by the script ``testbuilder.py``
 located in the top-level of ``formal/promela/src``.
-To avoid using (long) absolute pathnames, it helps to define the following 
-alias: 
+To avoid using (long) absolute pathnames, 
+it helps to define an suitable alias
+*(e.g.)*:
 
 .. code-block:: shell
 
   alias tbuild='python3 /..../formal/promela/src/testbuilder.py'
 
-We will use this alias in what follows.
+This alias is used subsequently in this documentation.
 
 Tool Configuration
 ------------------

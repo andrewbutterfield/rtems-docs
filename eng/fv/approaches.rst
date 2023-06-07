@@ -167,7 +167,8 @@ Promela is quite a low-level modelling language that makes it easy to get close
 to code level, and is specifically targeted to modelling software. It is one of
 the most widely used model-checkers, both in industry and education. It uses
 assertions, and linear-time temporal logic (LTL) to express properties of
-interest.
+interest. It uses linear-time temporal logic (:term:`LTL`) to express properties
+of interest.
 
 Given a Promela model that checks key properties successfully,
 tests can be generated for a property *P* by asking

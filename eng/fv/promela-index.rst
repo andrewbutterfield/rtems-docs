@@ -5,8 +5,7 @@
 Modelling RTEMS with Promela
 ============================
 
-Here we present how we have used Promela/SPIN to generate tests for various
-RTEMS APIs.
+This is a guide on how to use Promela/SPIN to generate tests for RTEMS APIs.
 
 .. toctree::
 
