@@ -27,7 +27,11 @@ Installing Test Generation Tools
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The test generation tools are found in ``formal/promela/src``, written in
-Python3, and installed using a virtual envornment. 
+Python3, and installed using a virtual environment. 
+
+Tool Building
+-------------
+
 To build the tools, enter ``formal/promela/src`` and issue the 
 commands:
 
@@ -51,6 +55,26 @@ it helps to define an suitable alias
   alias tbuild='python3 /..../formal/promela/src/testbuilder.py'
 
 This alias is used subsequently in this documentation.
+
+To check for a successful tool build, invoke the command without any 
+arguments, which should result in an extended help message being displayed:
+
+.. code-block:: shell
+
+  (env) prompt % tbuild
+  USAGE:
+  help - more details about usage and commands below
+  all modelname - runs clean, spin, gentests, copy, compile and run
+  clean modelname - remove spin, test files
+  archive modelname - archives spin, test files
+  zero  - remove all tesfiles from RTEMS
+  spin modelname - generate spin files
+  gentests modelname - generate test files
+  copy modelname - copy test files and configuration to RTEMS
+  compile - compiles RTEMS tests
+  run - runs RTEMS tests
+
+The tool is not yet ready for use, as it needs to be configured.
 
 Tool Configuration
 ------------------
