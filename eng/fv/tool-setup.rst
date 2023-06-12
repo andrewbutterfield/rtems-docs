@@ -82,7 +82,104 @@ Tool Configuration
 Tool configuration involves setting up a new testsuite in RTEMS, and providing
 information to ``tbuild`` that tells it where to find key locations, and some
 command-line arguments for some of the tools.
-There are scripts to assist with this in rtems-central.
+A template file ``testbuilder-template.yml`` is included,
+and contains the following entries:
+
+.. code-block:: python
+
+  # This should be specialised for your setup, as testbuilder.yml,
+  # located in the same directory as testbuilder.py
+  # All pathnames should be absolute
+
+  spin2test: <spin2test_directory>/spin2test.py
+  rtems: <path-to-main-rtems-directory>  # rtems.git, or ..../modules/rtems/
+  rsb: <rsb-build_directory>/rtems/6/bin/
+  simulator: <path-to>/sparc-rtems6-sis
+  testyamldir: <rtems>/spec/build/testsuites/validation/ # directory containing <modelname>.yml
+  testcode: <rtems>/testsuites/validation/
+  testexedir:  <rtems>/build/.../testsuites/validation/ # directory containing ts-<modelname>.exe
+  testsuite: model-0
+  simulatorargs: -leon3 -r s -m 2  # run command executes "<simulator> <simargs> <testexedir>/ts-<testsuite>.exe"
+  spinallscenarios: -DTEST_GEN -run -E -c0 -e # trail generation "spin <spinallscenarios> <model>.pml"
+
+This template should be copied/renamed to ``testbuilder.yml`` 
+and each entry updated as follows:
+
+* spin2test: 
+    This should be the absolute path to ``spin2test.py`` 
+    in the Promela sources directory.
+
+    ``/.../formal/promela/src/spin2test.py``
+
+
+
+* rtems: 
+    This should be the absolute path to your RTEMS source directory,
+    with the terminating ``/``.
+    From ``rtems-central`` this would be:
+
+    ``/.../rtems-central/modules/rtems/``
+
+    For a separate ``rtems`` installation 
+    it would be where ``rtems.git`` was cloned.
+
+    We refer to this path below as ``<rtems>``.
+
+* rsb:
+    This should be the absolute path 
+    to your RTEMS source-builder binaries directory,
+    with the terminating ``/``.
+    From ``rtems-central`` this would be (assuming RTEMS 6):
+
+    ``/.../rtems-central/modules/rsb/6/bin/`` 
+  
+* simulator: 
+    This should be the absolute path to the ``sis`` simulator:
+    
+    ``/.../rtems-central/modules/rsb/6/bin/sparc-rtems6-sis``
+  
+* testsuite:
+    This is the name for the testsuite : 
+    
+    Default value: ``model-0``
+
+* testyamldir: 
+    This should be the absolute path to where validation tests are *specified*:
+
+    ``<rtems>/spec/build/testsuites/validation/``
+  
+* testcode:
+    This should be the absolute path to where validation test sources 
+    are found:
+    
+    ``<rtems>/testsuites/validation/``
+  
+* testexedir:
+    This should be the absolute path to where 
+    the model-based validation test executable 
+    will be found:  
+    
+    ``<rtems>/build/.../testsuites/validation/``
+    
+    This will contain ``ts-<testsuite>.exe`` (e.g. ``ts-model-0.exe``)
+  
+* simulatorargs:
+    These are the command line arguments for the ``sis`` simulator.
+
+    ``-<bsp> -r s -m <cpus>``
+
+    The first argument should be the BSP used when building RTEMS sources.
+    BSPs ``leon3``, ``gr712rc`` and ``gr740`` have been used.
+    The argument to the ``-m`` flag is the number of cores. 
+    Possible values are: 1, 2 and 4 (BSP dependent)
+
+    Default: ``-leon3 -r s -m 2``
+
+* spinallscenarios:
+    These are command line arguments for SPIN, 
+    that ensure that all counter-examples are generated.
+    
+    Default: ``-DTEST_GEN -run -E -c0 -e`` (recommended)
 
 Testsuite Setup
 ^^^^^^^^^^^^^^^
