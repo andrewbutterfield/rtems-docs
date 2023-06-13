@@ -2,10 +2,6 @@
 
 .. Copyright (C) 2022 Trinity College Dublin
 
-Using Promela/SPIN for RTEMS Test Generation
-============================================
-
-This is a guide on how to use Promela/SPIN to generate tests for RTEMS APIs.
 
 .. toctree::
 
