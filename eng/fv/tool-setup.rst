@@ -28,10 +28,6 @@ Installing Test Generation Tools
 
 The test generation tools are found in ``formal/promela/src``, written in
 Python3, and installed using a virtual environment. 
-
-Tool Building
--------------
-
 To build the tools, enter ``formal/promela/src`` and issue the 
 commands:
 

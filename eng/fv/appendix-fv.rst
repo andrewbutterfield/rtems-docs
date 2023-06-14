@@ -32,13 +32,13 @@ Message Manager
 Models of the MrsP scheduler thread queues, and the Semaphore Manager are currently in
 progress, and should appear at some point in the future.
 
-**Gedare** *This all reads like a project report, rather than a manual. 
+*Gedare:* **This all reads like a project report, rather than a manual. 
 Although the references to the completed MSc dissertations are appreciated and 
 useful, they should be better integrated where the work that was done is 
 described within the manual itself. The start of this appendix should better 
 explain what is being shown here, i.e., 
 the detailed examples of the above modelings. 
-You might also link to the relevant sections.*
+You might also link to the relevant sections.**
 
 .. _TestGenOverview:
 

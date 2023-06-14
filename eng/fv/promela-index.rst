@@ -2,10 +2,8 @@
 
 .. Copyright (C) 2022 Trinity College Dublin
 
-
 .. toctree::
 
     tool-setup
     promela
     refinement
-    methodology

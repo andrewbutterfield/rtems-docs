@@ -2,11 +2,12 @@
 
 .. Copyright (C) 2022 Trinity College Dublin
 
-Modelling RTEMS with Promela
-============================
+Modelling with Promela
+======================
 
-Promela is a large language with many features. We only use a subset of those
-in our test generation scheme. Here we give a short overview of what we do use.
+Promela is a large language with many features,
+but only a subset is used here for test generation. 
+This is a short overview of that subset.
 The definitive documentation can be found at
 https://spinroot.com/spin/Man/promela.html .
 

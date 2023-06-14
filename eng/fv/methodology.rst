@@ -2,209 +2,50 @@
 
 .. Copyright (C) 2022 Trinity College Dublin
 
-Promela/SPIN Methodology
-========================
-
-
 Test Generation Methodology
----------------------------
+===========================
 
 The general approach to using any model-checking technology for test generation
 has three major steps:
 
-**1.**
+Model desired behavior
+----------------------
+
+Construct a model that describes the desired properties (`P1`, ..., `PN`)
+and use the model-checker to verify those properties.
+
+Promela can specify properties using the ``assert()`` statement, to be
+true at the point where it gets executed, and can use Linear Temporal Logic
+(LTL) to specify more complex properties over execution sequences. SPIN will
+also check generic correctness properties such as deadlock and
+livelock freedom.
+
+Make claims about undesired behavior
+------------------------------------
+
+Given a fully verified model, systematically negate each specified property.
+Given that each property was verified as true, 
+then these negated properties will fail model-checking, 
+and counter-examples will be
+generated. These counter-examples will in fact be scenarios describing correct
+behavior of the system, demonstrating the truth of each property.
+
+It is very important that the negations only apply to stated properties,
+and do not alter the possible behaviors of the model in any way.
+
+With Promela, there are a number of different ways to do systematic
+negation. The precise approach adopted depends the nature of the models, and
+more details can the found 
+in the RTEMS Formal Models Guide Appendix in this document.
+
+Map good behavior scenarios to tests
+--------------------------------------
+
+Define a mapping from counter-example output to test code, 
+and use this in the process of constructing a test program.
+
+A YAML file is used to define a mapping from SPIN output to
+relevant fragments of RTEMS C test code, using the Test Framework section
+in this document. 
+The process is automated by a python script called ``testbuilder``.
 
-  Construct a model that describes the desired properties (`P1`, ..., `PN`)
-  and use the model-checker to verify those properties.
-
-  In Promela we can specify properties using the ``assert()`` statement, to be
-  true at the point where it gets executed, and can use Linear Temporal Logic
-  (LTL) to specify more complex properties over execution sequences. SPIN will
-  also check generic correctness properties such as deadlock- and
-  livelock-freedom.
-
-.. blank
-
-**2.**
-
-  Given a fully verified model from Step 1, then systematically negate each
-  specified property (e.g. `not P1`). Given that we verified `P1` as true, then
-  this revised model will fail model-checking, and a counter-example will be
-  generated. This counter-example will in fact be a scenario describing correct
-  behaviour of the system, demonstrating that `P1` is true.
-
-  With Promela, there are a number of different ways we can do systematic
-  negation. The precise approach adopted depends the nature of the models, and
-  will be elaborated below. SPIN outputs counter-examples as trail files,
-  which it can then be  re-simulated producing readable output. This is hard to
-  parse, so we use ``printf()`` statements to produce our own output format
-  that is readable and easily parsed.
-
-  We explored two ways to do the negations. One is a manual approach in
-  which we manually edit the model to negate the properties. The second is an
-  automatic approach that parses the model, identifies all the property
-  statements, and for each of these, generates a new Promela source file with
-  that statement negated.
-
-.. blank
-
-**3.**
-
-  Define a mapping from counter-example output to test code, and automate the
-  process of constructing a test program.
-
-  We use a YAML file to define a mapping from our ``printf()`` output to
-  relevant fragments of RTEMS C test code, using the Test Framework described
-  in :numref:`RTEMSTestFramework`. We do this using the ``spin2test.coco`` and
-  ``testbuilder.py`` python scripts in ``formal/promela/src``.
-
-
-The automatic approach requires a Promela parser written in Python. For now, we
-only describe  tests delivered using the manual approach.
-
-
-Using the Tools
----------------
-
-In :numref:`FormalToolSetup` we describe the testbuilder tool. This is an
-automation wrapper around ``spin2test`` which does the real work. We describe
-how ``spin2test`` is used in detail below.
-
-The ``spin2test`` tool is run from a directory containing a Promela model
-along with supporting files,
-all linked together by a common model name
-
-For a model called `mymodel` we expect to see the following files:
-
-* ``mymodel.pml`` - the Promela model
-* ``mymodel-rfn.yml`` - the model refinement to C test code
-* ``tc-mymodel.c`` - the testcase setup C file
-* ``tr-mymodel.h`` - the test-runner header file
-* ``tr-mymodel.c`` - the test-runner setup C file
-
-The following files are templates used to assemble
-a single test-runner test file
-for each scenario generated by the Promela model:
-
-* ``mymodel-pre.h`` - preamble material at the start
-* ``mymodel-run.h`` - test runner material
-* ``mymodel-post.h`` - postamble material at the end.
-
-
-Steps to use ``spin2test`` to generate tests
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-
-To generate all the test scenarios, invoke SPIN as follows:
-
-.. code-block:: shell
-
-  spin -run -E -c0 -e mymodel.pml
-
-
-This will generate N trail files, numbered 1..N:
-
-.. code-block:: none
-
-  ``mymodel.pml1.trail``
-  ...
-  ``mymodel.pmlN.trail``
-
-
-Annotation Generation
-^^^^^^^^^^^^^^^^^^^^^
-
-Use SPIN to produce scenario listings for I in {1,..,N} as follows, that we
-store in files with a ``.spn`` extension:
-
-.. code-block:: shell
-
-  spin -T -t1 mymodel.pml > mymodel-0.spn
-  spin -T -t2 mymodel.pml > mymodel-1.spn
-  ...
-  spin -T -tN mymodel.pml > mymodel-{N-1}.spn
-
-
-SPIN numbers files from 1 up, whereas RTEMS prefer to number things,
-including filenames, from zero.
-
-Test Code Generation
-^^^^^^^^^^^^^^^^^^^^
-
-Run ``spin2test`` on each ``.spn`` file as follows:
-
-.. code-block:: shell
-
-  spin2test mymodel 0
-  spin2test mymodel 1
-  ....
-  spin2test mymodel {N-1}
-
-
-These will generate test-runner test files as follows:
-
-.. code-block:: none
-
-  tr-mymodel-0.c
-  tr-mymodel-1.c
-  ...
-  tr-mymodel-{N-1}.c
-
-
-Test Code Deployment
-^^^^^^^^^^^^^^^^^^^^
-
-All files starting with ``tc-`` or ``tr-`` need to be copied to the
-relevant testsuite directory.
-At present, this is ``testsuites/validation`` at the top level in
-the ``rtems`` repository.
-All the names of the above files with a ``.c`` extension need to be added
-into the testsuite specification directory,
-into a YAML file that
-defines the Promela generated-test sources.
-At present, this
-is ``spec/build/testsuites/validation/model-0.yml``
-at the top-level in the ``rtems`` repository.
-
-They should appear under the ``source`` key something like this:
-
-.. code-block:: yaml
-
-  source:
-  - testsuites/validation/ts-model-0.c
-  ...
-  - testsuites/validation/tr-model-0.c
-  - testsuites/validation/tr-model-1.c
-  ...
-  - testsuites/validation/tr-mymodel-{N-1}.c
-  ...
-
-
-Building the Test Executable
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-Just navigate to ``rtems`` and give the command ``./waf``
-
-The test executable will be stored in a build directory.
-
-At present this is
-``build/sparc/gr740/testsuites/validation/ts-model-0.exe``,
-assuming that ``sparc/gr740`` appears in ``config.ini``.
-
-Running the Test Executable
-^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-Use the SIS simulator:
-
-.. code-block:: shell
-
-  sparc-rtems6-sis -leon3 -r s -m 4 <path-to>/ts-model-0.exe
-
-This will generate output in the form generated by the RTEMS Test Framework.
-
-All of the above can be done by invoking the ``testbuilder.py`` script:
-
-.. code-block:: shell
-
-  tbuild all mymodel
-  
