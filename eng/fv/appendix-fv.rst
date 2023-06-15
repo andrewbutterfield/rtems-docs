@@ -5,32 +5,38 @@
 Appendix: RTEMS Formal Model Guide
 **********************************
 
-Here we describe the various formal models of RTEMS that are currently in
-existence. The following  are included in the  directory ``formal`` 
-at the top-level in  ``rtems-central``:
+This appendix covers the various formal models of RTEMS that are currently in
+existence. It serves two purposes:
+one is to provide detailed documentation of each model,
+while the other is provide a guide into how to go about developing and deploying such models.
 
-Chains API 
+The general approach followed here is to start by looking at the API documentation and identifying the key data-structures and function prototypes.
+These are then modelled appropriately in Promela.
+Then, general behavior patterns of interest are identified, 
+and the Promela model is extended to provide those patterns.
+A key aspect here is exploiting the fact that Promela allows non-deterministic choices to be specified, which gives the effect of producing arbitrary orderings of model behavior.
+All of this leads to a situation were the SPIN model-checker can effectively generate scenarios for all possible interleavings.
+The final stage is mapping those scenarios to RTEMS C test code.
+
+Some familiarity is assumed here with the Software Test Framework section in this document.
+
+The following models are included in the directory ``formal/promela/models/`` 
+at the top-level in ``rtems-central``:
+
+Chains API (``chains/``)
     Models the unprotected chain append and get API calls in the Classic
     Chains API Guide. This was an early model to develop the basic methodology.
 
-Events Manager
+Events Manager (``events/``)
     Models the behaviour of all the API calls in the Classic Events Manager API
     Guide. This had to tackle real concurrency and deal with multiple CPUs and priority
     issues.
 
-A number of other Classic RTEMS Managers have been modelled and have had tests
-generated, as M.Sc. Dissertation topics. These have also been included in the initial set
-of models.
-
-Barrier Manager
+Barrier Manager (``barriers/``)
     Models the behaviour of all the API calls in then Classic Barrier Manager API.
 
-Message Manager 
+Message Manager (``messages/``)
     Models the create, send and receive API calls in the Classic Message Manager API.
-
-
-Models of the MrsP scheduler thread queues, and the Semaphore Manager are currently in
-progress, and should appear at some point in the future.
 
 *Gedare:* **This all reads like a project report, rather than a manual. 
 Although the references to the completed MSc dissertations are appreciated and 
@@ -40,85 +46,21 @@ explain what is being shown here, i.e.,
 the detailed examples of the above modelings. 
 You might also link to the relevant sections.**
 
-.. _TestGenOverview:
-
-Test Generation Overview
-------------------------
-
-Given an RTEMS feature we want to test, we first define a rootname
-``feature-model`` that identifies the feature, and indicates that we are basing
-our tests on a model.
-
-We develop a Promela model of the feature as file ``feature-model.pml``. We
-ensure this model captures the correct behaviour and verify its correctness.
-We also add annotation ``printf()`` statements and a way to negate the
-relevant properties.
-
-We then use SPIN to generate the test scenarios and replay them so we have the
-annotation output available. This results in a number of text files named
-``feature-model-N.spn`` , where ``N`` ranges from 0 upwards.
-
-For each value of ``N`` we use a refinement mapping defined in
-``feature-model-rfn.yml`` to generate segments of C test code, one for each
-Promela process. We then generate the corresponding test code in file
-``tr-feature-model-N.c`` by concatenating the following pieces:
-
-1. ``feature-model-pre.h``  (The Preamble)
-2. The segments of C test code produced by the refinement mapping
-3. ``feature-model-post.h``  (The Postamble)
-4. The contents of ``feature-model-run.h`` (The Runner) where the value of
-   ``N`` has been substituted in at key locations.
-
-The Runner defines a test case for this scenario. It is a file that contains
-substitution markers for use with Pythons ``format()`` substitution,
-and whose contents will generally look like this:
-
-.. code-block:: c
-
-   void RtemsFeatureModel_Run{0}()
-   {{
-     Context ctx;
-     memset( &ctx, 0, sizeof( ctx ) );
-     T_set_verbosity( T_NORMAL );
-     TestSegment0( &ctx );
-   }}
-   T_TEST_CASE( RtemsFeatureModel{0} )
-   {{
-     RtemsFeatureModel_Run{0}( );
-   }}
-
-All the ``{0}`` above will be replaced by ``N``, and the double braces by
-single ones, so for ``N`` equal to 42 (say), we get:
-
-.. code-block:: c
-
-   void RtemsFeatureModel_Run42()
-   {{
-     Context ctx;
-     memset( &ctx, 0, sizeof( ctx ) );
-     T_set_verbosity( T_NORMAL );
-     TestSegment0( &ctx );
-   }}
-   T_TEST_CASE( RtemsFeatureModel42 )
-   {{
-     RtemsFeatureModel_Run42( );
-   }}
-
-All the generated ``tr-feature-model-N.c`` sources are copied to the location
-for the testsuite sources.  Also so copied are the following files:
-``tr-feature-model.h``, ``tr-feature-model.c``, and ``tc-feature-model.c``
-(if present). The latter file is not required for simple test setups like the
-Chains API, but is needed for more complex cases like the Event Manager.
 
 Testing Chains
 --------------
 
+Documentation:  Chains section in the RTEMS Classic API Guide.
+
+Model Directory: ``formal/promela/models/chains``.
+
+Model Name: ``chains-api-model``.
+
+
+
 The Chains API provides a doubly-linked list data-structure, optimised for fast
 operations in an SMP setting. We used it a proof of concept exercise.
 
-See section Chains in the Classic API Guide.
-
-Model Directory: ``formal/promela/models/chains``
 
 Model
 ^^^^^
@@ -449,6 +391,13 @@ repository, where they should be built and run using ``waf`` as normal.
 
 Testing Events
 --------------
+
+Documentation:  Event Manager section in the RTEMS Classic API Guide.
+
+Model Directory: ``formal/promela/models/events``.
+
+Model Name: ``event-mgr-model``.
+
 
 The Event Manager is a central piece of code in RTEMS SMP, being at the basis
 of task communication and synchronization. It is used for instance in the
@@ -1246,6 +1195,13 @@ repository, where they should be built and run using ``waf`` as normal.
 Testing Barriers
 ----------------
 
+Documentation:  Barrier Manager section in the RTEMS Classic API Guide.
+
+Model Directory: ``formal/promela/models/barriers``.
+
+Model Name: ``barrier-mgr-model``.
+
+
 The Barrier Manager is used to arrange for a number of tasks to wait on a 
 designated barrier object, until either another tasks releases them, or a 
 given number of tasks are waiting, at which point they are all released.
@@ -1286,6 +1242,13 @@ repository, where they should be built and run using ``waf`` as normal.
 
 Testing Messages
 ----------------
+
+Documentation:  Message Manager section in the RTEMS Classic API Guide.
+
+Model Directory: ``formal/promela/models/messages``.
+
+Model Name: ``msg-mgr-model``.
+
 
 The Message Manager provides objects that act as message queues. Tasks can 
 interact with these by enqueuing and/or dequeuing message objects.
