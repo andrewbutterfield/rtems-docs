@@ -446,11 +446,11 @@ refined test segments
     These are where the code segments above get invoked.
 
 ``mymodel-run.h``
-   This defines top-level C functions that implement a given test runner.
+   This defines top-level C functions that implement a given test runner. The top-level function has a name like ``RtemsMyModel_Run``
    This is not valid C as it needs to produce a name parameterized by 
    the relevant scenario number. It contains Python string format substitution 
    placeholders that allow the relevant number to be added to end of the 
-   function name.
+   function name. So the above run function actually appears in this file as ``RtemsMyModel_Run{0}``, so ``I`` will be substituted in for ``{0}`` to result in the name ``RtemsMyModel_RunI``.
    In particular, it invokes ``TestSegment0()`` which contains code 
    generated from Promela process 0, which is the main model function.
    This declares test variables, and initializes them.
@@ -463,6 +463,19 @@ These will generate test-runner test files as follows:
   ...
   tr-mymodel-{N-1}.c
 
+In addition, the test case file ``tc-mymodel.c`` needs to have entries added
+manually of the form below, for ``I`` in the range 0 to N-1.:
+
+.. code-block:: c
+
+  T_TEST_CASE( RtemsMyModelI )
+  {
+    RtemsMyModel_RunI(
+      ...
+    );
+  }
+
+These define the individual test cases in the model, each corresponding to precisely one SPIN scenario.
 
 Test Code Deployment
 ^^^^^^^^^^^^^^^^^^^^
