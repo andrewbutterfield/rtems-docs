@@ -39,6 +39,9 @@ Barrier Manager (``barriers/``)
 Message Manager (``messages/``)
     Models the create, send and receive API calls in the Classic Message Manager API.
 
+At the end of this guide is a section that discusses various issues that should be tackled in future work.
+
+
 *Gedare:* **This all reads like a project report, rather than a manual. 
 Although the references to the completed MSc dissertations are appreciated and 
 useful, they should be better integrated where the work that was done is 
@@ -70,6 +73,12 @@ File: ``chains-api-model.pml``
 As Promela does not have pointers, we re-coded the append algorithm using arrays
 with pointers being array indices. We treat array index 0 as the equivalent of a
 NULL pointer, so the first array element is never used.
+
+There is no notion of returning values from Promela ``proctype`` or ``inline``
+constructs, so we need to have global variables to model return values. Also,
+C pointers used to designate where to return a result need to be modelled
+by indices into global array variables.
+
 
 .. code:: c
 
@@ -382,29 +391,6 @@ Model Directory: ``formal/promela/models/events``.
 
 Model Name: ``event-mgr-model``.
 
-API Model
-^^^^^^^^^
-
-File: ``xxx-model.pml``
-
-Behaviour Patterns
-^^^^^^^^^^^^^^^^^^
-
-File: ``xxx-model.pml``
-
-Annotations
-^^^^^^^^^^^
-
-File: ``xxx-model.pml``
-
-Refinement
-^^^^^^^^^^
-
-File: ``xxx-model-rfn.yml``
-
-
-
-
 The Event Manager is a central piece of code in RTEMS SMP, being at the basis
 of task communication and synchronization. It is used for instance in the
 implementation of semaphores or various essential high-level data-structures,
@@ -447,140 +433,22 @@ and drove the more complex parts of the modelling.
    where the two tasks involved were running on different processors.
 
 
-Annotated Model
-~~~~~~~~~~~~~~~
+API Model
+^^^^^^^^^
 
-File: ``event-mgr-model.pml``
-
-The Event Manager model consists of
-five Promela processes:
-
-``init``
-    The first top-level Promela process that performs initialisation,
-    starts the other processes, waits for them to terminate, and finishes.
-
-``System``
-    A Promela process that models the behaviour of the operating system,
-    in particular that of the scheduler.
-
-``Clock``
-    A Promela process used to facilitate modelling timeouts.
-
-``Sender``
-    A Promela process used to model the RTEMS sender task.
-
-``Receiver``
-    A Promela process used to model the RTEMS receiver task.
-
-Model State
-~~~~~~~~~~~
+File: ``xxx-model.pml``
 
 The RTEMS Event set contains 32 values, but in our model we limit ourselves to
-just four, which is enough for test purposes. We envisage two RTEMS tasks
-involved, at most. We use two simple binary semaphores to synchronise the tasks.
-We provide some inline definitions to encode (``events``), display
-(``printevents``), and subtract (``setminus``) events.
-
-Our Task model only looks at an abstracted version of RTEMS Task states:
-
-``Zombie``
-    used to model a task that has just terminated. It can only be deleted.
-
-``Ready``
-    same as the RTEMS notion of ``Ready``.
-
-``EventWait``
-    is ``Blocked`` inside a call of ``event_receive()`` with no timeout.
-
-``TimeWait``
-    is ``Blocked`` inside a call of ``event_receive()`` with a timeout.
-
-``OtherWait``
-    is ``Blocked`` for some other reason, which arises in this model when a
-    sender gets pre-empted by a higher priority receiver it has just satisfied.
+just four, which is enough for test purposes. 
 
 We simplify the ``rtems_option_set`` to just two relevant bits: the timeout
 setting (``Wait``, ``NoWait``), and how much of the desired event set will
 satisfy the receiver (``All``, ``Any``).
 
-We represent tasks using a datastructure array. As array indices are proxies
-here for C pointers, the zeroth array entry is always unused, as we use index
-value 0 to model a NULL C pointer.
-
-.. code-block:: c
-
-   typedef Task {
-     byte nodeid; // So we can spot remote calls
-     byte pmlid; // Promela process id
-     mtype state ; // {Ready,EventWait,TickWait,OtherWait}
-     bool preemptable ;
-     byte prio ; // lower number is higher priority
-     int ticks; //
-     bool tout; // true if woken by a timeout
-     unsigned wanted  : NO_OF_EVENTS ; // EvtSet, those expected by receiver
-     unsigned pending : NO_OF_EVENTS ; // EvtSet, those already received
-     bool all; // Do we want All?
-   };
-   Task tasks[TASK_MAX]; // tasks[0] models a NULL dereference
-
 There is no notion of returning values from Promela ``proctype`` or ``inline``
 constructs, so we need to have global variables to model return values. Also,
 C pointers used to designate where to return a result need to be modelled
 by indices into global array variables.
-
-.. code-block:: c
-
-   byte sendrc;            // Sender global variable
-   byte recrc;             // Receiver global variable
-   byte recout[TASK_MAX] ; // models receive 'out' location.
-
-Task Scheduling
-~~~~~~~~~~~~~~~
-
-In order to produce a model that captures real RTEMS Task behaviour, we need
-to have mechanisms that mimic the behaviour of the scheduler and other
-activities that can modify the execution state of these Tasks. Given a scenario
-generated by such a model, we need to add synchronisation to the generated C
-code to ensure test has the same execution patterns.
-
-For scheduling we use:
-
-``waitUntilReady``
-    ``waitUntilReady(id)`` logs that ``task[id]`` is waiting, and then attempts
-    to execute a statement that blocks, until some other process changes
-    ``task[id]``\ 's state to ``Ready``. It relies on the fact that if a
-    statement blocks inside an atomic block, the block loses its atomic
-    behaviour and yields to other Promela processes It is used to model a task
-    that has been suspended for any reason.
-
-``preemptIfRequired``
-    ``preemptIfRequired(sendid,rcvid)`` is executed, when ``task[rcvid]`` has had its receive request satisfied
-    by a send from ``task[sendid]``. It is invoked by the send operation in this
-    model. It checks if ``task[sendid]`` should be preempted, and makes it so.
-    This is achieved here by setting the task state to ``OtherWait``.
-
-For synchronisation we use simple boolean semaphores, where True means
-available, and False means the semaphore has been acquired.
-
-.. code-block:: c
-
-   bool semaphore[SEMA_MAX]; // Semaphore
-
-The synchronisation mechanisms are:
-
-
-``Obtain(sem_id)``
-   call that waits to obtain semaphore ``sem_id``.
-
-``Release(sem_id)``
-    call that releases semaphore ``sem_id``
-
-``Released(sem_id)``
-    simulates ecosystem behaviour that releases ``sem_id``.
-
-The difference between ``Release`` and ``Released`` is that the first issues
-a ``SIGNAL`` annotation, while the second does not.
-
 
 Event Send
 ~~~~~~~~~~
@@ -724,6 +592,135 @@ Here ``mergeopts`` is a C function defined in the C Preamble.
        printevents(tasks[self].pending); nl();
      }
    }
+
+
+
+Behaviour Patterns
+^^^^^^^^^^^^^^^^^^
+
+File: ``xxx-model.pml``
+
+The Event Manager model consists of
+five Promela processes:
+
+``init``
+    The first top-level Promela process that performs initialisation,
+    starts the other processes, waits for them to terminate, and finishes.
+
+``System``
+    A Promela process that models the behaviour of the operating system,
+    in particular that of the scheduler.
+
+``Clock``
+    A Promela process used to facilitate modelling timeouts.
+
+``Sender``
+    A Promela process used to model the RTEMS sender task.
+
+``Receiver``
+    A Promela process used to model the RTEMS receiver task.
+
+We envisage two RTEMS tasks
+involved, at most. We use two simple binary semaphores to synchronise the tasks.
+We provide some inline definitions to encode (``events``), display
+(``printevents``), and subtract (``setminus``) events.
+
+Our Task model only looks at an abstracted version of RTEMS Task states:
+
+``Zombie``
+    used to model a task that has just terminated. It can only be deleted.
+
+``Ready``
+    same as the RTEMS notion of ``Ready``.
+
+``EventWait``
+    is ``Blocked`` inside a call of ``event_receive()`` with no timeout.
+
+``TimeWait``
+    is ``Blocked`` inside a call of ``event_receive()`` with a timeout.
+
+``OtherWait``
+    is ``Blocked`` for some other reason, which arises in this model when a
+    sender gets pre-empted by a higher priority receiver it has just satisfied.
+
+
+We represent tasks using a datastructure array. As array indices are proxies
+here for C pointers, the zeroth array entry is always unused, as we use index
+value 0 to model a NULL C pointer.
+
+.. code-block:: c
+
+   typedef Task {
+     byte nodeid; // So we can spot remote calls
+     byte pmlid; // Promela process id
+     mtype state ; // {Ready,EventWait,TickWait,OtherWait}
+     bool preemptable ;
+     byte prio ; // lower number is higher priority
+     int ticks; //
+     bool tout; // true if woken by a timeout
+     unsigned wanted  : NO_OF_EVENTS ; // EvtSet, those expected by receiver
+     unsigned pending : NO_OF_EVENTS ; // EvtSet, those already received
+     bool all; // Do we want All?
+   };
+   Task tasks[TASK_MAX]; // tasks[0] models a NULL dereference
+
+.. code-block:: c
+
+   byte sendrc;            // Sender global variable
+   byte recrc;             // Receiver global variable
+   byte recout[TASK_MAX] ; // models receive 'out' location.
+
+
+
+
+
+Task Scheduling
+~~~~~~~~~~~~~~~
+
+
+In order to produce a model that captures real RTEMS Task behaviour, we need
+to have mechanisms that mimic the behaviour of the scheduler and other
+activities that can modify the execution state of these Tasks. Given a scenario
+generated by such a model, we need to add synchronisation to the generated C
+code to ensure test has the same execution patterns.
+
+For scheduling we use:
+
+``waitUntilReady``
+    ``waitUntilReady(id)`` logs that ``task[id]`` is waiting, and then attempts
+    to execute a statement that blocks, until some other process changes
+    ``task[id]``\ 's state to ``Ready``. It relies on the fact that if a
+    statement blocks inside an atomic block, the block loses its atomic
+    behaviour and yields to other Promela processes It is used to model a task
+    that has been suspended for any reason.
+
+``preemptIfRequired``
+    ``preemptIfRequired(sendid,rcvid)`` is executed, when ``task[rcvid]`` has had its receive request satisfied
+    by a send from ``task[sendid]``. It is invoked by the send operation in this
+    model. It checks if ``task[sendid]`` should be preempted, and makes it so.
+    This is achieved here by setting the task state to ``OtherWait``.
+
+For synchronisation we use simple boolean semaphores, where True means
+available, and False means the semaphore has been acquired.
+
+.. code-block:: c
+
+   bool semaphore[SEMA_MAX]; // Semaphore
+
+The synchronisation mechanisms are:
+
+
+``Obtain(sem_id)``
+   call that waits to obtain semaphore ``sem_id``.
+
+``Release(sem_id)``
+    call that releases semaphore ``sem_id``
+
+``Released(sem_id)``
+    simulates ecosystem behaviour that releases ``sem_id``.
+
+The difference between ``Release`` and ``Released`` is that the first issues
+a ``SIGNAL`` annotation, while the second does not.
 
 Scenarios
 ~~~~~~~~~
@@ -1093,12 +1090,17 @@ The ``spin2test`` program does this,
 and also produces separate test code segments for each Promela process.
 
 
-Refinement
-~~~~~~~~~~
 
-Files:
- | ``event-mgr-model-N.spn`` where ``N`` ranges from 0 upwards.
- | ``event-mgr-model-rfn.yml``
+Annotations
+^^^^^^^^^^^
+
+File: ``xxx-model.pml``
+
+Refinement
+^^^^^^^^^^
+
+File: ``xxx-model-rfn.yml``
+
 
 The test-code we generate here is based on the test-code generated from the
 specification items used to describe the Event Manager in the main (non-formal)
@@ -1256,5 +1258,9 @@ Refinement
 
 File: ``msg-mgr-model-rfn.yml``
 
+Future Work
+-----------
+
+**Discuss model re-design and having re-usable models of (1) tx-support.c facilities (e.g., simple binary semaphores), and (2) common infrastructure behaviour such as System and Clock.**
 
 
