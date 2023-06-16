@@ -448,7 +448,7 @@ and drove the more complex parts of the modelling.
 
 
 Annotated Model
-^^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~~
 
 File: ``event-mgr-model.pml``
 
@@ -1094,7 +1094,7 @@ and also produces separate test code segments for each Promela process.
 
 
 Refinement
-^^^^^^^^^^
+~~~~~~~~~~
 
 Files:
  | ``event-mgr-model-N.spn`` where ``N`` ranges from 0 upwards.
@@ -1170,7 +1170,7 @@ Some handle more complicated test outcomes, such as observing context-switches:
      T_eq_u32( log->events[ 1 ].heir, ctx->worker_id );
 
 
-Most of the other refinement  entries are similar to those described above for
+Most of the other refinement entries are similar to those described above for
 the Chains API.
 
 Testing Barriers
@@ -1182,36 +1182,40 @@ Model Directory: ``formal/promela/models/barriers``.
 
 Model Name: ``barrier-mgr-model``.
 
-API Model
-^^^^^^^^^
-
-File: ``xxx-model.pml``
-
-Behaviour Patterns
-^^^^^^^^^^^^^^^^^^
-
-File: ``xxx-model.pml``
-
-Annotations
-^^^^^^^^^^^
-
-File: ``xxx-model.pml``
-
-Refinement
-^^^^^^^^^^
-
-File: ``xxx-model-rfn.yml``
-
-
 The Barrier Manager is used to arrange for a number of tasks to wait on a 
 designated barrier object, until either another tasks releases them, or a 
 given number of tasks are waiting, at which point they are all released.
 
-While the fine details of the Promela model here, in
-``barrier-mgr-model.pml``, differs from those used for the Event Manager,
-the overall architecture in terms of Promela  processes is very similar,
-with processes ``init``, ``System``, ``Clock``, ``Sender``, and
-``Receiver``.
+API Model
+^^^^^^^^^
+
+File: ``barrier-mgr-model.pml``
+
+The fine details of the Promela model here, in
+``barrier-mgr-model.pml``, differs from those used for the Event Manager.
+
+Behaviour Patterns
+^^^^^^^^^^^^^^^^^^
+
+File: ``barrier-mgr-model.pml``
+
+The overall architecture in terms of Promela  processes is very similar to the
+the Event Manager with processes ``init``, ``System``, ``Clock``, ``Sender``, and ``Receiver``.
+
+Annotations
+^^^^^^^^^^^
+
+File: ``barrier-mgr-model.pml``
+
+Refinement
+^^^^^^^^^^
+
+File: ``barrier-mgr-model-rfn.yml``
+
+
+
+
+
 
 Testing Messages
 ----------------
@@ -1222,32 +1226,35 @@ Model Directory: ``formal/promela/models/messages``.
 
 Model Name: ``msg-mgr-model``.
 
+The Message Manager provides objects that act as message queues. Tasks can 
+interact with these by enqueuing and/or dequeuing message objects.
+
 API Model
 ^^^^^^^^^
 
-File: ``xxx-model.pml``
+File: ``msg-mgr-model.pml``
+
+The fine details of the Promela model here, in
+``msg-mgr-model.pml``, differs from those used for the Event Manager.
 
 Behaviour Patterns
 ^^^^^^^^^^^^^^^^^^
 
-File: ``xxx-model.pml``
+File: ``msg-mgr-model.pml``
+
+The overall architecture in terms of Promela processes is very similar to the
+Event Manager with processes ``init``, ``System``, ``Clock``, ``Sender``, and
+``Receiver``.
 
 Annotations
 ^^^^^^^^^^^
 
-File: ``xxx-model.pml``
+File: ``msg-mgr-model.pml``
 
 Refinement
 ^^^^^^^^^^
 
-File: ``xxx-model-rfn.yml``
+File: ``msg-mgr-model-rfn.yml``
 
 
-The Message Manager provides objects that act as message queues. Tasks can 
-interact with these by enqueuing and/or dequeuing message objects.
 
-While the fine details of the Promela model here, in
-``msg-mgr-model.pml``, differs from those used for the Event Manager,
-the overall architecture in terms of Promela processes is very similar,
-with processes ``init``, ``System``, ``Clock``, ``Sender``, and
-``Receiver``.
