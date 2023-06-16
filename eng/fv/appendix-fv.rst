@@ -136,7 +136,13 @@ Also, the Chains documentation is not clear about certain error cases.
 As this is a proof of concept exercise, these details are not modelled.
 
 A Promela inline definition ``append`` models the desired behavior,
-simulating C pointers with array addresses:
+simulating C pointers with array addresses. Here ``ch`` is the chain argument,
+while ``np`` is a node index.
+The model starts by checking that the node pointer is not ``NULL``,
+and that there is room in ``memory`` for another node.
+These are to ensure that the model does not have any runtime errors.
+Doing a standard model-check of this model finds no errors,
+which indicates that those assertions are never false.
 
 .. code:: c
 
@@ -163,10 +169,11 @@ It returns a pointer to the node, with ``NULL`` returned if the chain is empty.
 Promela inlines involve textual substitution, 
 so the concept of returning a value makes no sense.
 For ``get``,  the model is that of a statement that assigns the return value to
-a variable (e.g. ``np = get(ch)``). Both the function argument and return variable name are passed as parameters:
+a variable. Both the function argument and return variable name are passed as parameters:
 
 .. code:: c 
 
+  /* np = get(ch); */
   inline get(ch,np) {
     np = ch.head ;
     if
@@ -188,33 +195,49 @@ Behavior patterns
 
 File: ``chains-api-model.pml``
 
-We then create a Promela process `doAppend` that puts the new chain value into
-the addressed node and then calls ``append``, and terminates. We make it all
-atomic because we don't want the chain operations to interleave internally. Such
-extra interleaving is unnecessary and would only make the model larger and
-produce more redundant tests.
+A key feature of using a modelling language like Promela is that it has both
+explicit and implicit non-determinism. This can be exploited so that SPIN will
+find all possible interleavings of behavior.
+
+The Chains API model consists of six processes, three which perform ``append``,
+and three that perform ``get``, waiting if the chain is empty. This model relies
+on implicit non-determinism, in that the SPIN scheduler can choose and switch 
+between any unblocked process at any point. There is no explicit non-determinism
+in this model.
+
+Promela process ``doAppend`` takes node index ``addr`` and a value ``val`` as
+parameters. It puts ``val`` into the node indexed by ``addr``,
+then calls ``append``, and terminates. 
+It is all made atomic to avoid unnecessary internal interleaving of operations because unprotected versions of API calls should only be used when interrupts
+are disabled.
 
 .. code:: c
 
   proctype doAppend(int addr; int val) {
-    atomic{ memory[addr].itm = val; append(chain,addr); } ;
+    atomic{ memory[addr].itm = val; 
+            append(chain,addr); } ;
   }
 
-We implement the ``get`` operation similarly. The ``doNonNullGet`` process
-waits for the chain to be non-empty before attempting to extract an element.
+The ``doNonNullGet`` process waits for the chain to be non-empty before attempting to ``get`` an element. The first statement inside the atomic
+construct is an expression, as a statements, that blocks while it evaluates to
+zero. That only happens if ``head`` is in fact zero. The model also has an 
+assertion that checks that a non-null node is returned.
+
+.. code:: c
+
+  proctype doNonNullGet() {
+    atomic{
+      chain.head != 0;
+      get(chain,nptr);
+      assert(nptr != 0);
+    } ;
+  }
 
 
-The model produced is one in which we have 6 processes, 3 of which perform a
-single ``append``, and 3 of which do a single ``get`` when the chain is not
-empty. All processes terminate after they have performed their action.
-We initialize an empty chain and then run all six processes concurrently,
-and at the end, we assert that the chain is empty. We use the special
-``_nr_pr`` variable to ensure we wait for all six processes to terminate
-before checking the final condition.
-SPIN uses the C pre-processor, and the model-checker code can accept
-Environment Variables, so we use ``TEST_GEN`` as a way to distinguish normal
-model-checker operation from the test generation mode. For test generation,
-SPIN is invoked at the command-line with ``-DTEST_GEN``.
+All processes terminate after they have performed their (sole) action.
+
+The top-level of a Promela model is an initial process declared by the``init`` construct. This initializes the chain as empty and then runs all six processes concurrently. It then uses the special ``_nr_pr`` variable to wait for all six
+processes to terminate. A final assertion checks that the chain is empty.
 
 .. code:: c
 
@@ -229,12 +252,13 @@ SPIN is invoked at the command-line with ``-DTEST_GEN``.
     run doNonNullGet();
     run doNonNullGet();
     nr == _nr_pr;
-  #ifdef TEST_GEN
-    assert (chain.size != 0);
-  #else
     assert (chain.size == 0);
-  #endif
   }
+
+Simulation of this model will show some execution sequence in which the appends
+happen in a random order, and the gets also occur in a random order, whenever
+the chain is not empty. All assertions are always satisfied, including the last
+one above. Model checking this model explores all possible interleavings and reports no errors of any kind.
 
 Annotations
 ^^^^^^^^^^^
@@ -321,6 +345,31 @@ the lines starting with ``@@@`` we get:
     @@@ 0 SCALAR _ 22
     @@@ 0 END chain
     ...
+
+SPIN uses the C pre-processor, and the model-checker code can accept
+Environment Variables, so we use ``TEST_GEN`` as a way to distinguish normal
+model-checker operation from the test generation mode. For test generation,
+SPIN is invoked at the command-line with ``-DTEST_GEN``.
+
+.. code:: c
+
+  init {
+    pid nr;
+    atomic{ chain.head = 0; chain.tail = 0; chain.size = 0 } ;
+    nr = _nr_pr;
+    run doAppend(6,21);
+    run doAppend(3,22);
+    run doAppend(4,23);
+    run doNonNullGet();
+    run doNonNullGet();
+    run doNonNullGet();
+    nr == _nr_pr;
+  #ifdef TEST_GEN
+    assert (chain.size != 0);
+  #else
+    assert (chain.size == 0);
+  #endif
+  }
 
 
 Refinement
