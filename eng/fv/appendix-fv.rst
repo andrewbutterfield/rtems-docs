@@ -16,7 +16,8 @@ Then, general behavior patterns of interest are identified,
 and the Promela model is extended to provide those patterns.
 A key aspect here is exploiting the fact that Promela allows non-deterministic choices to be specified, which gives the effect of producing arbitrary orderings of model behavior.
 All of this leads to a situation were the SPIN model-checker can effectively generate scenarios for all possible interleavings.
-The final stage is mapping those scenarios to RTEMS C test code.
+The final stage is mapping those scenarios to RTEMS C test code,
+which has two parts: generating machine-readable output from SPIN, and developing the refinement mapping from that output to C test code.
 
 Some familiarity is assumed here with the Software Test Framework section in this document.
 
@@ -56,51 +57,15 @@ Model Directory: ``formal/promela/models/chains``.
 
 Model Name: ``chains-api-model``.
 
-
-
 The Chains API provides a doubly-linked list data-structure, optimised for fast
-operations in an SMP setting. We used it a proof of concept exercise.
-
-
-Model
-^^^^^
-
-File: ``chains-api-model.pml``
-
-We focussed on just two API calls: ``rtems-chain-append-unprotected``
+operations in an SMP setting. It was used as proof of concept exercise, and focussed on just two API calls: ``rtems-chain-append-unprotected``
 and ``rtems-chain-get-unprotected`` (hereinafter just ``append`` and ``get``).
 
-The model produced is one in which we have 6 processes, 3 of which perform a
-single ``append``, and 3 of which do a single ``get`` when the chain is not
-empty. All processes terminate after they have performed their action.
-We initialize an empty chain and then run all six processes concurrently,
-and at the end, we assert that the chain is empty. We use the special
-``_nr_pr`` variable to ensure we wait for all six processes to terminate
-before checking the final condition.
-SPIN uses the C pre-processor, and the model-checker code can accept
-Environment Variables, so we use ``TEST_GEN`` as a way to distinguish normal
-model-checker operation from the test generation mode. For test generation,
-SPIN is invoked at the command-line with ``-DTEST_GEN``.
 
-.. code:: c
+API Model
+^^^^^^^^^
 
-  init {
-    pid nr;
-    atomic{ chain.head = 0; chain.tail = 0; chain.size = 0 } ;
-    nr = _nr_pr;
-    run doAppend(6,21);
-    run doAppend(3,22);
-    run doAppend(4,23);
-    run doNonNullGet();
-    run doNonNullGet();
-    run doNonNullGet();
-    nr == _nr_pr;
-  #ifdef TEST_GEN
-    assert (chain.size != 0);
-  #else
-    assert (chain.size == 0);
-  #endif
-  }
+File: ``chains-api-model.pml``
 
 As Promela does not have pointers, we re-coded the append algorithm using arrays
 with pointers being array indices. We treat array index 0 as the equivalent of a
@@ -142,6 +107,12 @@ added.
     fi
   }
 
+
+Behavior patterns
+^^^^^^^^^^^^^^^^^
+
+File: ``chains-api-model.pml``
+
 We then create a Promela process `doAppend` that puts the new chain value into
 the addressed node and then calls ``append``, and terminates. We make it all
 atomic because we don't want the chain operations to interleave internally. Such
@@ -157,8 +128,43 @@ produce more redundant tests.
 We implement the ``get`` operation similarly. The ``doNonNullGet`` process
 waits for the chain to be non-empty before attempting to extract an element.
 
+
+The model produced is one in which we have 6 processes, 3 of which perform a
+single ``append``, and 3 of which do a single ``get`` when the chain is not
+empty. All processes terminate after they have performed their action.
+We initialize an empty chain and then run all six processes concurrently,
+and at the end, we assert that the chain is empty. We use the special
+``_nr_pr`` variable to ensure we wait for all six processes to terminate
+before checking the final condition.
+SPIN uses the C pre-processor, and the model-checker code can accept
+Environment Variables, so we use ``TEST_GEN`` as a way to distinguish normal
+model-checker operation from the test generation mode. For test generation,
+SPIN is invoked at the command-line with ``-DTEST_GEN``.
+
+.. code:: c
+
+  init {
+    pid nr;
+    atomic{ chain.head = 0; chain.tail = 0; chain.size = 0 } ;
+    nr = _nr_pr;
+    run doAppend(6,21);
+    run doAppend(3,22);
+    run doAppend(4,23);
+    run doNonNullGet();
+    run doNonNullGet();
+    run doNonNullGet();
+    nr == _nr_pr;
+  #ifdef TEST_GEN
+    assert (chain.size != 0);
+  #else
+    assert (chain.size == 0);
+  #endif
+  }
+
 Annotations
 ^^^^^^^^^^^
+
+File: ``chains-api-model.pml``
 
 However, this pure model of ``append`` and ``get`` is not, of itself, useful
 for test generation. We need to add in ``printf()`` statements to generate
@@ -241,12 +247,14 @@ the lines starting with ``@@@`` we get:
     @@@ 0 END chain
     ...
 
+
 Refinement
 ^^^^^^^^^^
 
-Files:
- | ``chains-api-model-N.spn`` where ``N`` ranges from 0 upwards.
- | ``chains-api-model-rfn.yml``
+File: ``chains-api-model-rfn.yml``
+
+
+**NEED TO DESCRIBE HOW TO DESIGN REFINEMENT ENTRIES**
 
 The ``spin2test`` script takes these annotations, along with the YAML
 refinement file defined for the model, and proceeds to generate testcode. All
@@ -364,39 +372,37 @@ refinement files, and the resulting test code. There are plans to provide a
 mechanism that can be used to control the level of verbosity involved.
 
 
-Assembly
-^^^^^^^^
-
-Files:
- | ``chains-api-model-pre.h`` (Preamble)
- | ``chains-api-model-post.h`` (Postamble)
- | ``chains-api-model-run.h`` (Runner)
-
-The ``spin2test`` script then generates the required C test code from the
-test segment generated using the refinement file, and the above-mentioned files,
-as described in the :ref:`TestGenOverview` sub-section. For the Chain model,
-the Preamble #includes ``<rtems.h>``, ``<rtems/test.h>``, ``<rtems/chain.h>``,
-and ``tr-chains-api-model.h``. The Postamble is empty.
-
-Deployment
-^^^^^^^^^^
-
-Files:
- | ``tr-chains-api-model.h``
- | ``tr-chains-api-model.c``
- | ``tr-chains-api-model-N.c`` where ``N`` ranges from zero upwards.
-
-All the above files are copied to ``testsuites/validation`` in the ``rtems``
-repository, where they should be built and run using ``waf`` as normal.
-
 Testing Events
 --------------
+
 
 Documentation:  Event Manager section in the RTEMS Classic API Guide.
 
 Model Directory: ``formal/promela/models/events``.
 
 Model Name: ``event-mgr-model``.
+
+API Model
+^^^^^^^^^
+
+File: ``xxx-model.pml``
+
+Behaviour Patterns
+^^^^^^^^^^^^^^^^^^
+
+File: ``xxx-model.pml``
+
+Annotations
+^^^^^^^^^^^
+
+File: ``xxx-model.pml``
+
+Refinement
+^^^^^^^^^^
+
+File: ``xxx-model-rfn.yml``
+
+
 
 
 The Event Manager is a central piece of code in RTEMS SMP, being at the basis
@@ -579,7 +585,7 @@ a ``SIGNAL`` annotation, while the second does not.
 Event Send
 ~~~~~~~~~~
 
-We start with the notion of when a event receive call is statisfied. The
+We start with the notion of when a event receive call is satisfied. The
 requirements for both send and receive depend on such satisfaction.
 
 ``satisfied(task,out,sat)``
@@ -1167,31 +1173,6 @@ Some handle more complicated test outcomes, such as observing context-switches:
 Most of the other refinement  entries are similar to those described above for
 the Chains API.
 
-Assembly
-^^^^^^^^
-
-Files:
- | ``tr-event-mgr-model.h``
- | ``tr-event-mgr-model.c``
- | ``event-mgr-model-pre.h`` (Preamble)
- | ``event-mgr-model-post.h`` (Postamble)
- | ``event-mgr-model-run.h`` (Runner)
-
-
-The assembly process is the same as described for Chains.
-
-Deployment
-^^^^^^^^^^
-
-Files:
- | ``tc-event-mgr-model.c``
- | ``tr-event-mgr-model.h``
- | ``tr-event-mgr-model.c``
- | ``tr-event-mgr-model-N.c`` where ``N`` ranges from 0 upwards.
-
-All the above files are copied to ``testsuites/validation`` in the ``rtems``
-repository, where they should be built and run using ``waf`` as normal.
-
 Testing Barriers
 ----------------
 
@@ -1200,6 +1181,26 @@ Documentation:  Barrier Manager section in the RTEMS Classic API Guide.
 Model Directory: ``formal/promela/models/barriers``.
 
 Model Name: ``barrier-mgr-model``.
+
+API Model
+^^^^^^^^^
+
+File: ``xxx-model.pml``
+
+Behaviour Patterns
+^^^^^^^^^^^^^^^^^^
+
+File: ``xxx-model.pml``
+
+Annotations
+^^^^^^^^^^^
+
+File: ``xxx-model.pml``
+
+Refinement
+^^^^^^^^^^
+
+File: ``xxx-model-rfn.yml``
 
 
 The Barrier Manager is used to arrange for a number of tasks to wait on a 
@@ -1212,34 +1213,6 @@ the overall architecture in terms of Promela  processes is very similar,
 with processes ``init``, ``System``, ``Clock``, ``Sender``, and
 ``Receiver``.
 
-
-Assembly
-^^^^^^^^
-
-Files:
- | ``tr-barrier-mgr-model.h``
- | ``tr-barrier-mgr-model.c``
- | ``barrier-mgr-model-pre.h`` (Preamble)
- | ``barrier-mgr-model-post.h`` (Postamble)
- | ``barrier-mgr-model-run.h`` (Runner)
-
-
-The assembly process is the same as described for Chains.
-
-Deployment
-^^^^^^^^^^
-
-Files:
- | ``tc-barrier-mgr-model.c``
- | ``tr-barrier-mgr-model.h``
- | ``tr-barrier-mgr-model.c``
- | ``tr-barrier-mgr-model-N.c`` where ``N`` ranges from 0 upwards.
-
-All the above files are copied to ``testsuites/validation`` in the ``rtems``
-repository, where they should be built and run using ``waf`` as normal.
-
-
-
 Testing Messages
 ----------------
 
@@ -1248,6 +1221,26 @@ Documentation:  Message Manager section in the RTEMS Classic API Guide.
 Model Directory: ``formal/promela/models/messages``.
 
 Model Name: ``msg-mgr-model``.
+
+API Model
+^^^^^^^^^
+
+File: ``xxx-model.pml``
+
+Behaviour Patterns
+^^^^^^^^^^^^^^^^^^
+
+File: ``xxx-model.pml``
+
+Annotations
+^^^^^^^^^^^
+
+File: ``xxx-model.pml``
+
+Refinement
+^^^^^^^^^^
+
+File: ``xxx-model-rfn.yml``
 
 
 The Message Manager provides objects that act as message queues. Tasks can 
@@ -1258,30 +1251,3 @@ While the fine details of the Promela model here, in
 the overall architecture in terms of Promela processes is very similar,
 with processes ``init``, ``System``, ``Clock``, ``Sender``, and
 ``Receiver``.
-
-
-Assembly
-^^^^^^^^
-
-Files:
- | ``tr-msg-mgr-model.h``
- | ``tr-msg-mgr-model.c``
- | ``msg-mgr-model-pre.h`` (Preamble)
- | ``msg-mgr-model-post.h`` (Postamble)
- | ``msg-mgr-model-run.h`` (Runner)
-
-
-The assembly process is the same as described for Chains.
-
-Deployment
-^^^^^^^^^^
-
-Files:
- | ``tc-msg-mgr-model.c``
- | ``tr-msg-mgr-model.h``
- | ``tr-msg-mgr-model.c``
- | ``tr-msg-mgr-model-N.c`` where ``N`` ranges from 0 upwards.
-
-All the above files are copied to ``testsuites/validation`` in the ``rtems``
-repository, where they should be built and run using ``waf`` as normal.
-
