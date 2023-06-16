@@ -61,7 +61,8 @@ Model Directory: ``formal/promela/models/chains``.
 Model Name: ``chains-api-model``.
 
 The Chains API provides a doubly-linked list data-structure, optimised for fast
-operations in an SMP setting. It was used as proof of concept exercise, and focussed on just two API calls: ``rtems-chain-append-unprotected``
+operations in an SMP setting. It was used as proof of concept exercise,
+and focussed on just two API calls: ``rtems-chain-append-unprotected``
 and ``rtems-chain-get-unprotected`` (hereinafter just ``append`` and ``get``).
 
 
@@ -70,39 +71,72 @@ API Model
 
 File: ``chains-api-model.pml``
 
-As Promela does not have pointers, we re-coded the append algorithm using arrays
-with pointers being array indices. We treat array index 0 as the equivalent of a
-NULL pointer, so the first array element is never used.
+While smart code optimization techniques are very important for RTEMS code,
+the focus when constructing formal models is on functional correctness,
+not performance. What is required is the simplest, most obviously correct model.
 
-There is no notion of returning values from Promela ``proctype`` or ``inline``
-constructs, so we need to have global variables to model return values. Also,
-C pointers used to designate where to return a result need to be modelled
-by indices into global array variables.
+The ``append`` operation adds new nodes on the end of the list,
+while ``get`` removes and returns the node at the start of the list.
+The Chains API has many other operations that can add/remove nodes at either end, or somewhere in the middle, but these are considered out of scope.
 
+Data Structures
+~~~~~~~~~~~~~~~
+
+There are no pointers in Promela, so we have to use arrays, 
+with array indices modelling pointers.
+With just ``append`` and ``get``, an array can be used to implement a collection
+of nodes in memory.
+A ``Node`` type is defined that has next and previous indices, 
+plus an item payload.
+Access to the node list is via a special control node with head and tail pointers.
+In the model, an explicit size value is added to this control node,
+to allow the writing of properties about chain length,
+and to prevent array out-of-bound errors in the model itself.
+We assume a single ``chain``, 
+with list node storage statically allocated in ``memory``.
 
 .. code:: c
 
-  typedef Node { unsigned nxt : PTR_SIZE; unsigned prv : PTR_SIZE; byte itm}
+  #define PTR_SIZE 3
+  #define MEM_SIZE 8
+
+  typedef Node {
+    unsigned nxt  : PTR_SIZE
+  ; unsigned prv  : PTR_SIZE
+  ; byte     itm
+  }
   Node memory[MEM_SIZE] ;
+  
   typedef Control {
-    unsigned head : PTR_SIZE; unsigned tail : PTR_SIZE; unsigned size : PTR_SIZE
+    unsigned head : PTR_SIZE; 
+    unsigned tail : PTR_SIZE; 
+    unsigned size : PTR_SIZE
   }
   Control chain ;
 
-The chains implementation is a doubly-linked list of nodes that
-are accessed from a special control structure, using some subtle union
-overlays to ensure that node access can be done uniformly
-(no NULL pointer in any node).
-We abstract considerably from these details for now.
-In particular,
-we added an explicit ``size`` component
-to the Promela *model* we are developing,
-to allow us to easily write properties about chain length,
-and to prevent array out-of-bound errors in the model itself.
+While there are 8 memory elements, element 0 is inaccessible, 
+as the index 0 is treated like a ``NULL`` pointer.
 
-Here is our model array version of the ``append`` code. We check that the
-node-pointer ``np`` is not null, and that we have space for the entry being
-added.
+Function Calls
+~~~~~~~~~~~~~~
+
+The RTEMS prototype for ``append`` is:
+
+.. code:: c 
+
+  void rtems_chain_append_unprotected(
+      rtems_chain_control *the_chain,
+      rtems_chain_node    *the_node
+  );
+
+Its implementation starts by checking that the node to be appended is "off
+chain", before performing the append.
+The model is designed to satisfy this property so the check is not modelled.
+Also, the Chains documentation is not clear about certain error cases.
+As this is a proof of concept exercise, these details are not modelled.
+
+A Promela inline definition ``append`` models the desired behavior,
+simulating C pointers with array addresses:
 
 .. code:: c
 
@@ -113,6 +147,38 @@ added.
                          memory[np].nxt = 0; memory[np].prv = 0;
     :: (ch.head != 0) -> memory[ch.tail].nxt = np; memory[np].prv = ch.tail;
                          ch.tail = np; ch.size = ch.size + 1;
+    fi
+  }
+
+The RTEMS prototype for ``get`` is:
+
+.. code:: c 
+
+  rtems_chain_node *rtems_chain_get_unprotected(
+    rtems_chain_control *the_chain
+  );
+
+It returns a pointer to the node, with ``NULL`` returned if the chain is empty.
+
+Promela inlines involve textual substitution, 
+so the concept of returning a value makes no sense.
+For ``get``,  the model is that of a statement that assigns the return value to
+a variable (e.g. ``np = get(ch)``). Both the function argument and return variable name are passed as parameters:
+
+.. code:: c 
+
+  inline get(ch,np) {
+    np = ch.head ;
+    if
+      :: (np != 0) ->
+          ch.head = memory[np].nxt;
+          ch.size = ch.size - 1;
+          // memory[np].nxt = 0
+      :: (np == 0) -> skip
+    fi
+    if
+      :: (ch.head == 0) -> ch.tail = 0
+      :: (ch.head != 0) -> skip
     fi
   }
 
