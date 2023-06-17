@@ -234,7 +234,7 @@ assertion that checks that a non-null node is returned.
 
 All processes terminate after they have performed their (sole) action.
 
-The top-level of a Promela model is an initial process declared by the``init`` construct. This initializes the chain as empty and then runs all six processes concurrently. It then uses the special ``_nr_pr`` variable to wait for all six
+The top-level of a Promela model is an initial process declared by the ``init`` construct. This initializes the chain as empty and then runs all six processes concurrently. It then uses the special ``_nr_pr`` variable to wait for all six
 processes to terminate. A final assertion checks that the chain is empty.
 
 .. code:: c
@@ -385,41 +385,101 @@ Annotations are also added to the ``init`` process to show the chain and node.
 Refinement
 ^^^^^^^^^^
 
-File: ``chains-api-model-rfn.yml``
+Files: 
+  
+  ``chains-api-model-rfn.yml``
+ 
+  ``chains-api-model-pre.h``
 
+  ``tr-chains-api-model.c``
 
-**NEED TO DESCRIBE HOW TO DESIGN REFINEMENT ENTRIES**
+Model annotations are converted to C test code using a YAML file that maps
+single names to test code snippets into which parameters can be substituted.
+Parameters are numbered from zero, and the ``n``th parameter will be substituted
+wherever ``{n}`` occurs in the snippet.
 
-The ``spin2test`` script takes these annotations, along with the YAML
-refinement file defined for the model, and proceeds to generate testcode. All
-of these annotations have the same ``<pid>``, namely 0, so one test segment of
-code is produced. We show some examples of how this works below.
+Refinement is more than just the above mapping from annotations to code. Some of
+this code will refer to C variables, structures, and functions that are needed
+to support the test. Some of these are declared ``chains-api-model-pre.h`` and implemented in ``tr-chains-api-model.c``.
 
-Given ``@@@ 0 NAME Chain_AutoGen`` we lookup `NAME` in the refinement file,
-and get the following (which ignores the ``<name>`` parameter in this case):
+Data Structures
+~~~~~~~~~~~~~~~
 
-.. code-block:: c
+The initialization generates one each of ``NAME``, ``DEF``, ``DCLARRAY``, and
+``INIT`` annotations, and two ``DECL`` annotations.
 
+The ``DEF`` entry is currently not looked up as it is automatically converted to a ``#define``.
+
+The ``NAME`` annotation is used to declare the test case name, which is
+stored in the global variable ``rtems_test_name``. The current
+refinement entry is: 
+
+.. code:: python
+
+   NAME: |
      const char rtems_test_name[] = "Model_Chain_API";
 
-For ``@@@ 0 DEF MAX_SIZE 8`` we directly output
+In this case, the name is fixed and ignores what is declared in the model.
 
-.. code-block:: c
+The ``DCLARRAY Node memory MAX_SIZE`` annotation looks up ``memory_DCL`` in the
+refinement file, passing in ``memory`` and ``MAX_SIZE`` as arguments. The entry in the refinement file is:
 
-   #define MAX_SIZE 8
+.. code:: python
 
-For ``@@@ 0 DCLARRAY Node memory MAX_SIZE`` we lookup ``memory_DCL`` and get
-``item {0}[{1}];``. We substitute ``memory`` and ``MAX_SIZE`` to get
+  memory_DCL: item {0}[{1}];
 
-.. code-block:: c
+Here ``item`` is the type of the chains nodes used in the test code. It is
+declared in ``chains-api-model.pre.h`` as:
 
-   item memory[MAX_SIZE];
+.. code:: c
 
-For ``INIT`` we lookup ``INIT`` to get
+  typedef struct item
+  {
+      rtems_chain_node node;
+      int               val;
+  } item;
 
-.. code-block:: c
+Substituting the arguments gives:
 
-   rtems_chain_initialize_empty( &chain );
+.. code:: c
+
+  item memory[MAX_SIZE];
+
+The two ``DECL`` annotations have two or three parameters. The first is the
+type, the second is the variable name, and the optional third is an initial
+value. The lookup key is the variable name with ``_DCL`` added on.
+In the refinement file, the entry only provides the C type, and the other parts of the declaration are added in.
+The entries are:
+
+.. code:: python
+
+  nptr_DCL: item *
+  chain_DCL: rtems_chain_control
+  
+Annotation ``DECL unsigned nptr NULL`` results in:
+
+.. code:: c
+
+  item * nptr = NULL ;
+
+Annotation ``DECL Control chain`` results in:
+
+.. code:: c
+
+  rtems_chain_control chain ;
+
+The ``INIT`` annotation is looked up as ``INIT`` itself. It should be mapped to
+code that does all necessary initialization. The refinement entry for chains is:
+
+.. code:: python
+
+  INIT: rtems_chain_initialize_empty( &chain );
+
+In addition to all the above dealing with declarations and initialization,
+there are annotations used to display composite values, such as structure
+contents, and chain contents.
+
+**DESCRIBE show_node() AND show_chain. REWRITE THIS FOLLOWING STUFF**
 
 The first ``SEQ`` ... ``END`` pair is intended to display the initial chain,
 which should be empty. The second shows the result of an ``append`` with one
@@ -445,6 +505,13 @@ either empty, or just " 23". In the latter case we get the following code:
      T_eq_str( ctx->buffer, "23 0" );
 
 
+Function Calls
+~~~~~~~~~~~~~~
+
+
+
+
+
 For ``@@@ 0 CALL append 22 3`` we lookup ``append`` to get
 
 .. code-block:: c
@@ -459,6 +526,11 @@ We substitute ``22`` and ``3`` in to get
      memory[3].val = 22;
      rtems_chain_append_unprotected( &chain, (rtems_chain_node*)&memory[3] );
 
+
+Traceability
+------------
+
+**SAY MORE ABOUT TRACEABILITY HERE - the comments, the LOG**
 
 The following is the corresponding excerpt from the generated test-segment:
 
