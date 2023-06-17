@@ -189,7 +189,6 @@ a variable. Both the function argument and return variable name are passed as pa
     fi
   }
 
-
 Behavior patterns
 ^^^^^^^^^^^^^^^^^
 
@@ -233,7 +232,6 @@ assertion that checks that a non-null node is returned.
     } ;
   }
 
-
 All processes terminate after they have performed their (sole) action.
 
 The top-level of a Promela model is an initial process declared by the``init`` construct. This initializes the chain as empty and then runs all six processes concurrently. It then uses the special ``_nr_pr`` variable to wait for all six
@@ -258,17 +256,71 @@ processes to terminate. A final assertion checks that the chain is empty.
 Simulation of this model will show some execution sequence in which the appends
 happen in a random order, and the gets also occur in a random order, whenever
 the chain is not empty. All assertions are always satisfied, including the last
-one above. Model checking this model explores all possible interleavings and reports no errors of any kind.
+one above. Model checking this model explores all possible interleavings and reports no errors of any kind. In particular, when the model reaches the last
+assert statement, the chain size is always zero.
+
+SPIN uses the C pre-processor, and generates the model as a C program. This 
+model has a simple flow of control: basically execute each process once in an
+almost arbitrary order, assert that the chain is empty, and terminate. Test
+generation here just requires the negation of the final assertion to get all
+possible interleavings. The special C pre-processor definition ``TEST_GEN`` is
+used to switch between the two uses of the model. The last line above is
+replaced by:
+
+.. code:: c
+
+  #ifdef TEST_GEN
+    assert (chain.size != 0);
+  #else
+    assert (chain.size == 0);
+  #endif
+
+A test generation run can then be invoked by passing in ``-DTEST_GEN`` as a 
+command-line argument.
 
 Annotations
 ^^^^^^^^^^^
 
 File: ``chains-api-model.pml``
 
-However, this pure model of ``append`` and ``get`` is not, of itself, useful
-for test generation. We need to add in ``printf()`` statements to generate
-annotations. We do this for ``append`` by adding in two statements to the
-``doAppend`` process
+The model needs to have ``printf`` statements added to generation the
+annotations used to perform the test generation.
+
+This model wraps each of six API calls in its own process, so that model
+checking can generate all feasible interleavings. However, the plan for the test code is that it will be just one RTEMS Task, that executes all the API
+calls in the order determined by the scenario under consideration. All the 
+annotations in this model specify ``0`` as the Promela process identifier.
+
+Data Structures
+~~~~~~~~~~~~~~~
+
+Annotations have to be provided for any variable or datastructure declarations
+that will need to have corresponding code in the test program.
+These have to be printed out as the model starts to run.
+For this model, the ``MAX_SIZE`` parameter is important,
+as are the variables ``memory``, ``nptr``, and ``chain``:
+
+.. code:: c
+
+  printf("@@@ 0 NAME Chain_AutoGen\n")
+  printf("@@@ 0 DEF MAX_SIZE 8\n");
+  printf("@@@ 0 DCLARRAY Node memory MAX_SIZE\n");
+  printf("@@@ 0 DECL unsigned nptr NULL\n")
+  printf("@@@ 0 DECL Control chain\n");
+
+At this point, a parameter-free initialization annotation is issued. This should
+be refined to C code that initializes the above variables.
+
+.. code:: c
+
+  printf("@@@INIT\n");
+
+Function Calls
+~~~~~~~~~~~~~~
+
+For ``append``, two forms of annotation are produced. One uses the ``CALL``
+format to report the function being called along with its arguments. The other
+form reports the resulting contents of the chain.
 
 .. code:: c
 
@@ -277,9 +329,7 @@ annotations. We do this for ``append`` by adding in two statements to the
              printf("@@@ 0 CALL append %d %d\n",val,addr); show_chain(); } ;
    }
 
-The ``printf`` statement output indicates a call (``CALL``) to the
-``append`` API with the actual values supplied for parameters ``addr`` and
-``val``. The statement ``show_chain()`` is an inline function that prints the
+The statement ``show_chain()`` is an inline function that prints the
 contents of the chain after append returns.
 The resulting output is multi-line,
 starting with ``@@@ 0 SEQ chain``,
@@ -287,35 +337,7 @@ ending with ``@@@ 0 END chain``,
 and with entries in between of the form ``@@@ 0 SCALAR _ val``
 displaying chain elements, line by line.
 
-We need more than just API calls annotated in this way.
-We also have to provide annotations for various declarations.
-These have to appear in the Promela main program (called ``init``)
-as they have to be printed out as the model starts to run.
-The atomic initialiser becomes somewhat larger:
 
-.. code:: c
-
-      atomic{
-        printf("\n\n Chain Model running.\n");
-        printf("@@@ 0 NAME Chain_AutoGen\n")
-        printf("@@@ 0 DEF MAX_SIZE 8\n");
-        printf("@@@ 0 DCLARRAY Node memory MAX_SIZE\n");
-        printf("@@@ 0 DECL unsigned nptr NULL\n")
-        printf("@@@ 0 DECL Control chain\n");
-
-        printf("\nInitialising...\n")
-        printf("@@@INIT\n");
-        chain.head = 0; chain.tail = 0; chain.size = 0;
-        show_chain();
-      } ;
-
-The problem is that a ``#define``, or a type or variable declaration,
-is a compile-time feature of the Promela language,
-so it won't output useful information at runtime.
-Here we are adding ``printf`` statements to the ``init`` block
-in Promela model to output this information.
-
-Note that we show the initialised (empty) chain at the end.
 
 We can now run the Promela model using SPIN in verification mode,
 to generate a counter-example.
