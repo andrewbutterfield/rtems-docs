@@ -241,15 +241,15 @@ processes to terminate. A final assertion checks that the chain is empty.
 
   init {
     pid nr;
-    atomic{ chain.head = 0; chain.tail = 0; chain.size = 0 } ;
-    nr = _nr_pr;
+    chain.head = 0; chain.tail = 0; chain.size = 0 ;
+    nr = _nr_pr;  // assignment, sets `nr` to current number of procs
     run doAppend(6,21);
     run doAppend(3,22);
     run doAppend(4,23);
     run doNonNullGet();
     run doNonNullGet();
     run doNonNullGet();
-    nr == _nr_pr;
+    nr == _nr_pr; // expression, waits until number of procs equals `nr`
     assert (chain.size == 0);
   }
 
@@ -326,7 +326,9 @@ form reports the resulting contents of the chain.
 
    proctype doAppend(int addr; int val) {
      atomic{ memory[addr].itm = val; append(chain,addr);
-             printf("@@@ 0 CALL append %d %d\n",val,addr); show_chain(); } ;
+             printf("@@@ 0 CALL append %d %d\n",val,addr); 
+             show_chain(); 
+           } ;
    }
 
 The statement ``show_chain()`` is an inline function that prints the
@@ -337,63 +339,49 @@ ending with ``@@@ 0 END chain``,
 and with entries in between of the form ``@@@ 0 SCALAR _ val``
 displaying chain elements, line by line.
 
-
-
-We can now run the Promela model using SPIN in verification mode,
-to generate a counter-example.
-This is done in two steps:
-the first writes the counter-example to a trail file;
-while the second replays this trail file to run the counter-example.
-We can get SPIN to find all possible counterexamples at once with this model.
-This generates 21 scenarios.
-
-Part of one possible result of running SPIN to get counter-example output
-is shown below, from ``chains-api-model-8.spn`` . When we filter it to keep just
-the lines starting with ``@@@`` we get:
-
-.. code:: none
-
-    @@@ 0 NAME Chain_AutoGen
-    @@@ 0 DEF MAX_SIZE 8
-    @@@ 0 DCLARRAY Node memory MAX_SIZE
-    @@@ 0 DECL unsigned nptr NULL
-    @@@ 0 DECL Control chain
-    @@@ 0 INIT
-    @@@ 0 SEQ chain
-    @@@ 0 END chain
-    @@@ 0 PTR nptr 0
-    @@@ 0 CALL append 22 3
-    @@@ 0 SEQ chain
-    @@@ 0 SCALAR _ 22
-    @@@ 0 END chain
-    ...
-
-SPIN uses the C pre-processor, and the model-checker code can accept
-Environment Variables, so we use ``TEST_GEN`` as a way to distinguish normal
-model-checker operation from the test generation mode. For test generation,
-SPIN is invoked at the command-line with ``-DTEST_GEN``.
+Something similar is done for ``get``, with the addition of a third annotation
+``show_node()`` that shows the node that was got:
 
 .. code:: c
 
-  init {
-    pid nr;
-    atomic{ chain.head = 0; chain.tail = 0; chain.size = 0 } ;
-    nr = _nr_pr;
-    run doAppend(6,21);
-    run doAppend(3,22);
-    run doAppend(4,23);
-    run doNonNullGet();
-    run doNonNullGet();
-    run doNonNullGet();
-    nr == _nr_pr;
-  #ifdef TEST_GEN
-    assert (chain.size != 0);
-  #else
-    assert (chain.size == 0);
-  #endif
+  proctype doNonNullGet() {
+    atomic{
+      chain.head != 0;
+      get(chain,nptr);
+      printf("@@@ 0 CALL getNonNull %d\n",nptr);
+      show_chain();
+      assert(nptr != 0);
+      show_node();
+    } ;
   }
 
+The statement ``show_node()`` is defined as follows:
 
+.. code:: c
+
+  inline show_node (){
+    atomic{
+      printf("@@@ 0 PTR nptr %d\n",nptr);
+      if
+      :: nptr -> printf("@@@ 0 STRUCT nptr\n");
+                 printf("@@@ 0 SCALAR itm %d\n", memory[nptr].itm);
+                 printf("@@@ 0 END nptr\n")
+      :: else -> skip
+      fi
+    }
+  }
+
+It prints out the value of ``nptr``, which is an array index. If it is not zero,
+it prints out some details of the indexed node structure.
+
+Annotations are also added to the ``init`` process to show the chain and node.
+
+.. code:: c
+
+  chain.head = 0; chain.tail = 0; chain.size = 0;
+  show_chain();
+  show_node();
+ 
 Refinement
 ^^^^^^^^^^
 
