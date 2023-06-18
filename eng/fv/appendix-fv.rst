@@ -476,55 +476,118 @@ code that does all necessary initialization. The refinement entry for chains is:
   INIT: rtems_chain_initialize_empty( &chain );
 
 In addition to all the above dealing with declarations and initialization,
-there are annotations used to display composite values, such as structure
-contents, and chain contents.
+there are the annotations,  already described above, that are used to display
+composite values, such as structure contents, and chain contents.
 
-**DESCRIBE show_node() AND show_chain. REWRITE THIS FOLLOWING STUFF**
+In the model, all accesses to individual chain nodes are via index ``nptr``,
+which occurs in two types of annotations, ``PTR`` and ``STRUCT``. The ``PTR``
+annotation is refined by looking up ``nptr_PTR`` with the value of ``nptr`` as the sole argument. The refinement entry is:
 
-The first ``SEQ`` ... ``END`` pair is intended to display the initial chain,
-which should be empty. The second shows the result of an ``append`` with one
-value in the chain. In both cases, the name ``chain`` is recorded, and for
-each ``SCALAR _ val``, the value of ``val`` is printed to a string with a
-leading space. When ``@@@ 0 END chain`` is encountered we lookup ``chain_SEQ``
-to obtain:
+.. code:: python
 
-.. code-block:: c
+  nptr_PTR: |
+    T_eq_ptr( nptr, NULL );
+    T_eq_ptr( nptr, &memory[{0}] );
 
-     show_chain( &chain, ctx->buffer );
-     T_eq_str( ctx->buffer, "{0} 0" );
+The first line is used if the value of ``nptr`` is zero, otherwise the second
+line is used.
 
-Function ``show_chain`` is defined in the preamble C file used in test
-generation and is designed to display the chain contents in a string that
-matches the one generated here by the processing of ``SEQ`` ... ``SCALAR`` ...
-``END``. We substitute the accumulated string in for ``{0}``, which will be
-either empty, or just " 23". In the latter case we get the following code:
+The use of ``STRUCT`` requires three annotation lines in a row, *e.g.*:
 
-.. code-block:: c
+.. code:: c
 
-     show_chain( &chain, ctx->buffer );
-     T_eq_str( ctx->buffer, "23 0" );
+  @@@ 0 STRUCT nptr
+  @@@ 0 SCALAR itm 21
+  @@@ 0 END nptr
 
+The ``STRUCT`` and ``END`` annotations do not generate any code, but open and
+close a scope in which ``nptr`` is noted as the "name" of the struct. The
+``SCALAR`` annotation is used to observe simple values such as numbers or booleans. However, within a ``STRUCT`` it belongs to a C ``struct``, so the 
+relevant field needs to be used to access the value.
+Within this scope, the scalar variable ``itm`` is looked up as a field name,
+by searching for ``itm_FSCALAR`` with arguments``nptr`` and ``21``, which returns the entry:
+
+.. code:: python
+
+  itm_FSCALAR:   T_eq_int( {0}->val, {1} );
+
+This gets turned into the following test:
+
+.. code:: c
+
+  T_eq_int( nptr->val, 21 );
+
+A similar idea is used to test the contents of a chain. The annotations produced
+start with a ``SEQ`` annotation, followed by a ``SCALAR`` annotation for each 
+item in the chain, and then ending with an ``END`` annotation. Again, there is
+a scope defined where the ``SEQ`` argument is the "name" of the sequence.
+The ``SCALAR`` entries have no name here (indicated by ``_``), and their values
+are accumulated in a string, separated by spaces. Test code generation is 
+triggered this time by the ``END`` annotation, that looks up the "name" with ``_SEQ`` appended, and the accumulated string as an argument. The corresponding entry for chain sequences is:
+
+.. code:: python
+
+  chain_SEQ: |
+    show_chain( &chain, ctx->buffer );
+    T_eq_str( ctx->buffer, "{0} 0" );
+
+So, the following chain annotation sequence:
+
+.. code:: c
+
+  @@@ 0 SEQ chain
+  @@@ 0 SCALAR _ 21
+  @@@ 0 SCALAR _ 22
+  @@@ 0 END chain
+
+becomes the following C code:
+
+.. code:: C
+
+  show_chain( &chain, ctx->buffer );
+  T_eq_str( ctx->buffer, " 21 22 0" );
+
+C function ``show_chain()`` is defined in ``tr-chains-api-model.c`` and
+generates a string with exactly the same format as that produced above. These
+are then compared for equality.
+
+.. note::
+
+  The Promela/SPIN model checker's prime focus is modelling and verifying
+  concurrency related properties. It is not intended for verifying sequential
+  code or data transformations. This is why some of the ``STRUCT``/``SEQ``
+  material here is so clumsy. It plays virtually no role in the other models.
 
 Function Calls
 ~~~~~~~~~~~~~~
 
-
-
-
-
-For ``@@@ 0 CALL append 22 3`` we lookup ``append`` to get
+For ``@@@ 0 CALL append 22 3`` lookup ``append`` to get
 
 .. code-block:: c
 
      memory[{1}].val = {0};
      rtems_chain_append_unprotected( &chain, (rtems_chain_node*)&memory[{1}] );
 
-We substitute ``22`` and ``3`` in to get
+Substitute ``22`` and ``3`` in to produce
 
 .. code-block:: c
 
      memory[3].val = 22;
      rtems_chain_append_unprotected( &chain, (rtems_chain_node*)&memory[3] );
+
+For ``@@@ 0 CALL getNonNull 3`` lookup ``getNonNull`` to obtain
+
+.. code:: c
+    
+  nptr = get_item( &chain );
+  T_eq_ptr( nptr, &memory[{0}] );
+   
+Function ``get_item()`` is defined in ``tc-chains-api-model.c`` and calls ``rtems_chain_get_unprotected()``. Substitute  ``3`` to produce:
+
+.. code:: c
+    
+  nptr = get_item( &chain );
+  T_eq_ptr( nptr, &memory[3] );
 
 
 Traceability
