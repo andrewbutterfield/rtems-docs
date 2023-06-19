@@ -515,3 +515,40 @@ The executable will be found in the designated build directory,
  or directly on the hardware, if available.
 
  Both building the code and running on the simulator is also automated.
+
+Traceability
+------------
+
+Traceability between requirements, specifications, designs, code, and tests, is
+a key part of any qualification/certification effort. The test generation methodology developed here supports this in two ways, when refining an
+annotation:
+
+1.  If the annotation is for a declaration of some sort, the annotation itself
+    is added as a comment to the output code, just before the refined declaration.
+
+    .. code-block:: c
+
+      // @@@ 0 NAME Chain_AutoGen
+      // @@@ 0 DEF MAX_SIZE 8
+      #define MAX_SIZE 8
+      // @@@ 0 DCLARRAY Node memory MAX_SIZE
+      static item memory[MAX_SIZE];
+      // @@@ 0 DECL unsigned nptr NULL
+      static item * nptr = NULL;
+      // @@@ 0 DECL Control chain
+      static rtems_chain_control chain;
+
+2.  If the annotation is for a test of some sort, a call to ``T_log()`` is
+    generated with the annotation as its text, just before the test code.
+    
+    .. code-block:: c
+
+      T_log(T_NORMAL,"@@@ 0 INIT");
+      rtems_chain_initialize_empty( &chain );
+      T_log(T_NORMAL,"@@@ 0 SEQ chain");
+      T_log(T_NORMAL,"@@@ 0 END chain");
+      show_chain( &chain, ctx->buffer );
+      T_eq_str( ctx->buffer, " 0" );
+
+In addition to traceability, these also help when debugging models, refinement
+files, and the resulting test code. 

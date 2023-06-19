@@ -589,61 +589,8 @@ Function ``get_item()`` is defined in ``tc-chains-api-model.c`` and calls ``rtem
   nptr = get_item( &chain );
   T_eq_ptr( nptr, &memory[3] );
 
-
-Traceability
-------------
-
-**SAY MORE ABOUT TRACEABILITY HERE - the comments, the LOG**
-
-The following is the corresponding excerpt from the generated test-segment:
-
-.. code-block:: c
-
-  // @@@ 0 NAME Chain_AutoGen
-  // @@@ 0 DEF MAX_SIZE 8
-  #define MAX_SIZE 8
-  // @@@ 0 DCLARRAY Node memory MAX_SIZE
-  static item memory[MAX_SIZE];
-  // @@@ 0 DECL unsigned nptr NULL
-  static item * nptr = NULL;
-  // @@@ 0 DECL Control chain
-  static rtems_chain_control chain;
-
-  //  ===== TEST CODE SEGMENT 0 =====
-
-  static void TestSegment0( Context* ctx ) {
-    const char rtems_test_name[] = "Model_Chain_API";
-
-    T_log(T_NORMAL,"@@@ 0 INIT");
-    rtems_chain_initialize_empty( &chain );
-    T_log(T_NORMAL,"@@@ 0 SEQ chain");
-    T_log(T_NORMAL,"@@@ 0 END chain");
-    show_chain( &chain, ctx->buffer );
-    T_eq_str( ctx->buffer, " 0" );
-
-    T_log(T_NORMAL,"@@@ 0 PTR nptr 0");
-    T_eq_ptr( nptr, NULL );
-    T_log(T_NORMAL,"@@@ 0 CALL append 22 3");
-    memory[3].val = 22;
-    rtems_chain_append_unprotected( &chain, (rtems_chain_node*)&memory[3] );
-
-    T_log(T_NORMAL,"@@@ 0 SEQ chain");
-    T_log(T_NORMAL,"@@@ 0 SCALAR _ 22");
-    T_log(T_NORMAL,"@@@ 0 END chain");
-    show_chain( &chain, ctx->buffer );
-    T_eq_str( ctx->buffer, " 22 0" );
-    ...
-  }
-
-Note the extensive use of ``T_log()``, and emitted comments showing the
-annotations when producing declarations. These help when debugging models,
-refinement files, and the resulting test code. There are plans to provide a
-mechanism that can be used to control the level of verbosity involved.
-
-
 Testing Events
 --------------
-
 
 Documentation:  Event Manager section in the RTEMS Classic API Guide.
 
