@@ -622,7 +622,73 @@ The tests are organized as follows:
    One, called ``Clock()`` is used to model timing and timeouts;
    The other, called ``System()`` models relevant behavior of the RTEMS scheduler.
 
-All the models developed so far are based on this framework
+All the models developed so far are based on this framework.
+The structure of these models takes the following form:
+
+  Constant Declarations
+     Mainly ``#define``\ s that define important constants.
+
+  Datastructure Definitions
+    Promela ``typedef``\ s that describe key forms of data.
+    In particular there is a type ``Task`` that models RTEMS Tasks.
+    The Simple Binary Semaphores are modelled as boolean variables.
+
+  Global Variable Declarations
+    Typically these are arrays of data-structures, 
+    such as tasks or semaphores.
+
+  Supporting Models
+    These are ``inline`` definitions that capture common behavior.
+    In all models this includes ``Obtain`` and ``Release`` to model semaphores,
+    and ``waitUntilReady`` that models a blocked task waiting to be unblocked.
+    Included here are other definitions specific to the particular Manager being
+    modelled.
+
+  API Models
+    These are ``inline`` definitions that model the behavior of each API call.
+    All behavior must be modelled, including bad calls that (should) result in
+    an error code being returned.
+
+  Scenario Generation
+    A Testsuite that exercises *all* the API code is highly desirable.
+    This requires running tests that explore a wide range of scenarios,
+    normally devised by hand when writing a testsuite.
+    With Promela/SPIN, the model-checker can generate all of these simplify
+    as a result of its exhaustive search of the model. 
+    In practice, scenarios fall into a number of high-level categories,
+    so the first step is make a random choice of such a category.
+    Within a category there may be further choices to be done.
+    A collection of global scenario variables are used to records the choices made.
+    This is all managed by inline ``chooseScenario``.
+
+  RTEMS Test Task Modelling
+    This is a series of Promela ``proctype``\ s, one for the Runner Task,
+    and one for each of the Worker Tasks.
+    Their behaviour is controlled by the global scenario variables.
+
+  System Modelling
+    These are Promela processes that model relevant underlying RTEMS behavior,
+    such as the scheduler (``System``) and timers (``Clock``.).
+
+  Model Main Process
+    Called ``init``, this initialises things, invokes ``chooseScenario()``,
+    runs all the processes, waits for them to terminate,
+    and then terminates itself.
+    
+The Promela models developed so far for these Manager always terminate.
+The last few lines of each are of the form:
+
+.. code:: promela
+
+  #ifdef TEST_GEN
+    assert(false);
+  #endif
+
+If these models are run in the usual way (simulation or verification),
+then a correct verified model is observed.
+If ``-DTEST_GEN`` is provided as the first command-line argument,
+in verification mode configured to find *all* counterexamples,
+then all the possible (correct) behaviours of the system will be generated.
 
 Testing Events
 --------------
@@ -633,8 +699,6 @@ Model Directory: ``formal/promela/models/events``.
 
 Model Name: ``event-mgr-model``.
 
-The Event Manager is a central piece of code in RTEMS SMP, being at the basis
-of task communication and synchronization. 
 The Event Manager allows tasks to send events to,
 and receive events from, other tasks.
 From the perspective of the Event Manager,
