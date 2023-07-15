@@ -685,6 +685,10 @@ The structure of these models takes the following form:
     The refinement of this will pass the multiple feature arguments to 
     a C function that will assemble the single RTEMS argument.
 
+    A third reason is that sometimes it is important to also provide
+    the process id of the *calling* task. This can be important where
+    priority and preemption are involved.
+
   Scenario Generation
     A Testsuite that exercises *all* the API code is highly desirable.
     This requires running tests that explore a wide range of scenarios,
@@ -760,33 +764,23 @@ and drove the more complex parts of the modelling.
 2. There was a requirement that explicitly discussed the situation
    where the two tasks involved were running on different processors.
 
-
 API Model
 ^^^^^^^^^
 
 File: ``event-mgr-model.pml``
 
-The RTEMS Event set contains 32 values, but in our model we limit ourselves to
+The RTEMS Event set contains 32 values, but in the model limits this to
 just four, which is enough for test purposes. 
+Some inline definitions are provided to encode (``events``), display
+(``printevents``), and subtract (``setminus``) events.
 
-We simplify the ``rtems_option_set`` to just two relevant bits: the timeout
+The ``rtems_option_set`` is simplifiedto just two relevant bits: the timeout
 setting (``Wait``, ``NoWait``), and how much of the desired event set will
 satisfy the receiver (``All``, ``Any``).
-
-There is no notion of returning values from Promela ``proctype`` or ``inline``
-constructs, so we need to have global variables to model return values. Also,
-C pointers used to designate where to return a result need to be modelled
-by indices into global array variables.
+These are passed in as two separate arguments to the model of the receive call.
 
 Event Send
 ~~~~~~~~~~
-
-We start with the notion of when a event receive call is satisfied. The
-requirements for both send and receive depend on such satisfaction.
-
-``satisfied(task,out,sat)``
-    ``satisfied(task,out,sat)`` checks if a receive has been satisfied. It
-    updates its ``sat`` argument to reflect the check outcome.
 
 An RTEMS call ``rc = rtems_event_send(tid,evts)`` is modelled by an inline of
 the form:
@@ -830,6 +824,18 @@ to preempt under certain circumstances.
      }
    }
 
+Three inline abstractions are used:
+
+``satisfied(task,out,sat)``
+    updates ``out`` with the wanted events received so far, and then checks if a receive has been satisfied. It
+    updates its ``sat`` argument to reflect the check outcome. 
+
+``preemptIfRequired(self,tid)``
+   forces the sending process to enter the ``OtherWait``, 
+   if circumstances require it.
+
+``waitUntilReady(self)``
+   basically waits for the process state to become ``Ready``.
 
 Event Receive
 ~~~~~~~~~~~~~
@@ -853,7 +859,7 @@ The seven arguments are:
  | ``rc`` : updated with the return code when the receive completes.
 
 
-There is a small complication, in that we have distinct variables in our model
+There is a small complication, in that there are distinct variables in the model
 for receiver options that are combined into a single RTEMS option set. The
 actual calling sequence in C test code will be:
 
@@ -921,12 +927,12 @@ Here ``mergeopts`` is a C function defined in the C Preamble.
      }
    }
 
-
+Here ``satisfied()`` and ``waitUntilReady()`` are also used.
 
 Behaviour Patterns
 ^^^^^^^^^^^^^^^^^^
 
-File: ``xxx-model.pml``
+File: ``event-mgr-model.pml``
 
 The Event Manager model consists of
 five Promela processes:
@@ -942,18 +948,18 @@ five Promela processes:
 ``Clock``
     A Promela process used to facilitate modelling timeouts.
 
-``Sender``
-    A Promela process used to model the RTEMS sender task.
-
 ``Receiver``
-    A Promela process used to model the RTEMS receiver task.
+    The Promela process modelling the test Runner,
+    that also invokes the receive API call.
 
-We envisage two RTEMS tasks
-involved, at most. We use two simple binary semaphores to synchronise the tasks.
-We provide some inline definitions to encode (``events``), display
-(``printevents``), and subtract (``setminus``) events.
+``Sender``
+    A Promela process modelling a singe test Worker
+    that invokes the send API call.
 
-Our Task model only looks at an abstracted version of RTEMS Task states:
+
+Two simple binary semaphores are used to synchronise the tasks.
+
+The Task model only looks at an abstracted version of RTEMS Task states:
 
 ``Zombie``
     used to model a task that has just terminated. It can only be deleted.
@@ -972,9 +978,9 @@ Our Task model only looks at an abstracted version of RTEMS Task states:
     sender gets pre-empted by a higher priority receiver it has just satisfied.
 
 
-We represent tasks using a datastructure array. As array indices are proxies
-here for C pointers, the zeroth array entry is always unused, as we use index
-value 0 to model a NULL C pointer.
+Tasks are represented using a datastructure array. As array indices are proxies
+here for C pointers, the zeroth array entry is always unused, 
+as index value 0 is used to model a NULL C pointer.
 
 .. code-block:: c
 
@@ -997,10 +1003,6 @@ value 0 to model a NULL C pointer.
    byte sendrc;            // Sender global variable
    byte recrc;             // Receiver global variable
    byte recout[TASK_MAX] ; // models receive 'out' location.
-
-
-
-
 
 Task Scheduling
 ~~~~~~~~~~~~~~~
