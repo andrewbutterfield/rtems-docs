@@ -635,12 +635,12 @@ The structure of these models takes the following form:
 
   Global Variable Declarations
     Typically these are arrays of data-structures, 
-    such as tasks or semaphores.
+    representing objects such as tasks or semaphores.
 
   Supporting Models
     These are ``inline`` definitions that capture common behavior.
-    In all models this includes ``Obtain`` and ``Release`` to model semaphores,
-    and ``waitUntilReady`` that models a blocked task waiting to be unblocked.
+    In all models this includes ``Obtain()`` and ``Release()`` to model semaphores,
+    and ``waitUntilReady()`` that models a blocked task waiting to be unblocked.
     Included here are other definitions specific to the particular Manager being
     modelled.
 
@@ -648,6 +648,42 @@ The structure of these models takes the following form:
     These are ``inline`` definitions that model the behavior of each API call.
     All behavior must be modelled, including bad calls that (should) result in
     an error code being returned.
+    The parameter lists used in the Promela models will differ from those
+    of the actual API calls.
+    Consider a hypothetical RTEMS API call:
+
+    .. code:: c
+
+      rc = rtems_some_api(arg1,arg2,...,argN);
+
+    One reason, common to all calls, is that the ``inline`` construct has
+    no concept of returning a value,
+    so a variable parameter has to be added to represent it, 
+    and it has to be ensured the appropriate return code is assigned to it.
+
+    .. code:: promela
+
+      inline some_api(arg1,arg2,...,argN,rc) {
+        ...
+        rc = RC_some_code
+      }
+
+    Another reason is that some RTEMS types encode a number of different
+    concepts in a single machine word. 
+    The most notable of these is the ``rtems_options`` type,
+    that specifies various options, usually for calls that may block.
+    In some models, some options are modelled individually, for clarity.
+    So the API model may have two or more parameters where the RTEMS call has one.
+
+    .. code:: promela
+
+      inline some_api(arg1,arg2feat1,arg2feat2,...,argN,rc) {
+        ...
+        rc = RC_some_code
+      }
+
+    The refinement of this will pass the multiple feature arguments to 
+    a C function that will assemble the single RTEMS argument.
 
   Scenario Generation
     A Testsuite that exercises *all* the API code is highly desirable.
@@ -659,7 +695,7 @@ The structure of these models takes the following form:
     so the first step is make a random choice of such a category.
     Within a category there may be further choices to be done.
     A collection of global scenario variables are used to records the choices made.
-    This is all managed by inline ``chooseScenario``.
+    This is all managed by inline ``chooseScenario()``.
 
   RTEMS Test Task Modelling
     This is a series of Promela ``proctype``\ s, one for the Runner Task,
@@ -668,14 +704,14 @@ The structure of these models takes the following form:
 
   System Modelling
     These are Promela processes that model relevant underlying RTEMS behavior,
-    such as the scheduler (``System``) and timers (``Clock``.).
+    such as the scheduler (``System()``) and timers (``Clock()``).
 
   Model Main Process
-    Called ``init``, this initialises things, invokes ``chooseScenario()``,
+    Called ``init``, this initialises variables, invokes ``chooseScenario()``,
     runs all the processes, waits for them to terminate,
     and then terminates itself.
     
-The Promela models developed so far for these Manager always terminate.
+The Promela models developed so far for these Managers always terminate.
 The last few lines of each are of the form:
 
 .. code:: promela
