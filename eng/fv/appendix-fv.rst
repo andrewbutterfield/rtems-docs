@@ -41,16 +41,6 @@ Message Manager (``messages/``)
 
 At the end of this guide is a section that discusses various issues that should be tackled in future work.
 
-
-*Gedare:* **This all reads like a project report, rather than a manual. 
-Although the references to the completed MSc dissertations are appreciated and 
-useful, they should be better integrated where the work that was done is 
-described within the manual itself. The start of this appendix should better 
-explain what is being shown here, i.e., 
-the detailed examples of the above modelings. 
-You might also link to the relevant sections.**
-
-
 Testing Chains
 --------------
 
@@ -800,6 +790,11 @@ and drove the more complex parts of the modelling.
 2. There was a requirement that explicitly discussed the situation
    where the two tasks involved were running on different processors.
 
+A preliminary incomplete model of the Event Manager was originally developed
+by the consortium early in the project. The model was then completed during
+the rest of the activity by a Masters student: :cite:`Jennings:2021:FV`.
+They also developed the first iteration of the ``testbuilder`` program.
+
 API Model
 ^^^^^^^^^
 
@@ -1542,6 +1537,10 @@ The Barrier Manager is used to arrange for a number of tasks to wait on a
 designated barrier object, until either another tasks releases them, or a 
 given number of tasks are waiting, at which point they are all released.
 
+This model was developed by a Masters student :cite:`Jaskuc:2022:TESTGEN`,
+using the Event Manager as a model. It was added into the QDP produced by
+the follow-on IV&V activity.
+
 API Model
 ^^^^^^^^^
 
@@ -1568,11 +1567,6 @@ Refinement
 
 File: ``barrier-mgr-model-rfn.yml``
 
-
-
-
-
-
 Testing the Message Manager
 ---------------------------
 
@@ -1584,6 +1578,10 @@ Model Name: ``msg-mgr-model``.
 
 The Message Manager provides objects that act as message queues. Tasks can 
 interact with these by enqueuing and/or dequeuing message objects.
+
+This model was developed by a Masters student :cite:`Lynch:2022:TESTGEN`,
+using the Event Manager as a model. It was added into the QDP produced by
+the follow-on IV&V activity.
 
 API Model
 ^^^^^^^^^
@@ -1612,9 +1610,27 @@ Refinement
 
 File: ``msg-mgr-model-rfn.yml``
 
-Future Work
------------
+Current State of Play
+---------------------
 
-**Discuss model re-design and having re-usable models of (1) tx-support.c facilities (e.g., simple binary semaphores), and (2) common infrastructure behaviour such as System and Clock.**
+The models developed here are the result of
+an ad-hoc incremental development process 
+and have a lot of overlapping material.
+
+Model State
+^^^^^^^^^^^
+
+Over-engineered?  Too much system-hooking in API call models?
+
+Model Refactoring
+^^^^^^^^^^^^^^^^^
+
+Lots of common material!
+
+Test Code Refactoring
+^^^^^^^^^^^^^^^^^^^^^
+
+Need to fit with ``tx-support.c''
+
 
 
