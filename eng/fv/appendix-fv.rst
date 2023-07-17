@@ -1534,8 +1534,25 @@ Model Directory: ``formal/promela/models/barriers``.
 Model Name: ``barrier-mgr-model``.
 
 The Barrier Manager is used to arrange for a number of tasks to wait on a 
-designated barrier object, until either another tasks releases them, or a 
+designated barrier object, until either another task releases them, or a 
 given number of tasks are waiting, at which point they are all released.
+
+All five directives were modelled:
+
+* ``rtems_barrier_create()``
+
+* ``rtems_barrier_ident()``
+
+* ``rtems_barrier_delete()``
+
+* ``rtems_barrier_wait()``
+
+* ``rtems_barrier_release()``
+
+Barriers can be manual (released only by a call to ``..release()``),
+or automatic (released by the call to ``..wait()`` that results in a wait count limit being reached.)
+There is no notion of queuing in this manager, 
+only waiting for a barrier to be released.
 
 This model was developed by a Masters student :cite:`Jaskuc:2022:TESTGEN`,
 using the Event Manager as a model. It was added into the QDP produced by
@@ -1546,26 +1563,61 @@ API Model
 
 File: ``barrier-mgr-model.pml``
 
-The fine details of the Promela model here, in
-``barrier-mgr-model.pml``, differs from those used for the Event Manager.
+Modelling waiting is much easier than modelling queueing.
+All that is required is an array of booleans (``waiters``), indexed by process id:
+
+.. code:: promela
+
+  typedef Barrier {
+    byte b_name; // barrier name
+    bool isAutomatic; // true for automatic, false for manual barrier
+    int maxWaiters; // maximum count of waiters for automatic barrier
+    int waiterCount; // current amount of tasks waiting on the barrier
+    bool waiters[TASK_MAX]; // waiters on the barrier
+    bool isInitialised; // indicated whenever this barrier was created
+  }
+
+The name ``satisfied`` is currently used here for an inline that checks when
+a barrier can be released. 
+Other helper inlines include ``waitAtBarrier()`` and ``barrierRelease()``.
 
 Behaviour Patterns
 ^^^^^^^^^^^^^^^^^^
 
 File: ``barrier-mgr-model.pml``
 
-The overall architecture in terms of Promela  processes is very similar to the
-the Event Manager with processes ``init``, ``System``, ``Clock``, ``Sender``, and ``Receiver``.
+The overall architecture in terms of Promela processes has processes ``init``, ``System``, ``Clock``, ``Runner``, 
+and two workers: ``Worker1`` and ``Worker2``. 
+The runner and workers each may perform one or more API calls, 
+in the following order: create, ident, wait, release, delete.
+Scenarios mix and match which task does what.
+
+There are three top-level scenarios:
+
+.. code:: promela
+
+  mtype = {ManAcqRel,AutoAcq,AutoToutDel};
+
+In scenario ``ManAcqRel``, the runner will do create, release and delete,
+with sub-scenarios to check error cases as well as good behaviour,
+for manual barriers.
+Good behaviour involves one or more workers doing a wait.
+The ``AutoAcq`` and ``AutoToutDel`` 
+scenarios look at good and bad uses of automatic barriers.
 
 Annotations
 ^^^^^^^^^^^
 
 File: ``barrier-mgr-model.pml``
 
+Similiar to those used in the Event Manager.
+
 Refinement
 ^^^^^^^^^^
 
 File: ``barrier-mgr-model-rfn.yml``
+
+Similiar to those used in the Event Manager.
 
 Testing the Message Manager
 ---------------------------
@@ -1579,36 +1631,71 @@ Model Name: ``msg-mgr-model``.
 The Message Manager provides objects that act as message queues. Tasks can 
 interact with these by enqueuing and/or dequeuing message objects.
 
+There are 11 directives in total, but only the following were modelled:
+
+  * ``rtems_message_queue_create()``
+  
+  * ``rtems_message_queue_send()``
+  
+  * ``rtems_message_queue_receive()``
+
+The manager supports two queuing protocols, FIFO and priority-based.
+Only the FIFO queueing was modelled.
+
 This model was developed by a Masters student :cite:`Lynch:2022:TESTGEN`,
 using the Event Manager as a model. It was added into the QDP produced by
 the follow-on IV&V activity.
+
+Below we focus on aspects of this model that differ from the Event Manager.
 
 API Model
 ^^^^^^^^^
 
 File: ``msg-mgr-model.pml``
 
-The fine details of the Promela model here, in
-``msg-mgr-model.pml``, differs from those used for the Event Manager.
+A key feature of this manager is that not only are messages in a queue,
+but so are the tasks waiting for those messages.
+Both task and message queues are modelled as circular buffers,
+with inline definitions of enqueuing and dequeuing operations.
+
+While the Message Manager allows many queues to be created,
+the model only uses one.
+
 
 Behaviour Patterns
 ^^^^^^^^^^^^^^^^^^
 
 File: ``msg-mgr-model.pml``
 
-The overall architecture in terms of Promela processes is very similar to the
-Event Manager with processes ``init``, ``System``, ``Clock``, ``Sender``, and
-``Receiver``.
+The overall architecture in terms of Promela processes has processes ``init``, ``System``, ``Clock``, ``Sender``, and two receivers: 
+``Receiver1`` and ``Receiver2``.
+The ``Sender`` is the test runner, which performs the queue creation,
+releases the start semaphore and then performs a send operation if needed.
+The receivers are worker processes.
+
+There are four top level scenarios:
+
+.. code:: promela
+
+  mtype = {Send,Receive,SndRcv, RcvSnd};
+
+Scenarios ``Send`` and ``Receive`` are used for testing erroneous calls.
+The ``SndRcv`` scenario fills up queues before the receivers run,
+while the ``RcvSnd`` has the receivers waiting before messages are sent.
 
 Annotations
 ^^^^^^^^^^^
 
 File: ``msg-mgr-model.pml``
 
+Similiar to those used in the Event Manager.
+
 Refinement
 ^^^^^^^^^^
 
 File: ``msg-mgr-model-rfn.yml``
+
+Similiar to those used in the Event Manager.
 
 Current State of Play
 ---------------------
@@ -1626,8 +1713,13 @@ until sufficient coverage was acheived.
 The basic philosophy at the time was not to fix anything not broken.
 
 This has led to the models being somewhat over-engineered,
-particularly when it comes to scenario generation.  
-Also the API call models have perhaps a bit too code devoted 
+particularly when it comes to scenario generation. 
+There is some conditional looping behaviour, 
+implemented using labels and ``goto``, 
+that should really be linearised, using conditionals to skip parts.
+It is harder than it should be to understand what each scenario does.
+
+Also the API call models have perhaps a bit too much code devoted 
 to system behaviour.
 
 Model Refactoring
@@ -1638,7 +1730,8 @@ Some of this would address the model state issues above.
 Other refactoring would extract the common model material out,
 to be put into files that could be included.
 This includes the binary semaphore models,
-and the parts modelling preemption and waiting while blocked
+and the parts modelling preemption and waiting while blocked.
+
 
 Test Code Refactoring
 ^^^^^^^^^^^^^^^^^^^^^
@@ -1648,6 +1741,9 @@ a new file ``tx-support.c`` was added to the RTEMS validation testsuite codebase
 This gathers C test support functions used by most of the tests.
 The contents of the ``tr-<modelname>.h`` and ``tr-<modelname>.c``
 files in particular should be brought in line with ``tx-support.c``.
+
+Suitable Promela models should also be produced 
+of relevant functions in ``tx-support.c``.
 
 
 
