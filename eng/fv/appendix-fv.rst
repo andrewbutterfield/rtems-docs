@@ -1620,17 +1620,34 @@ and have a lot of overlapping material.
 Model State
 ^^^^^^^^^^^
 
-Over-engineered?  Too much system-hooking in API call models?
+The models were developed by first focusing on simple behavior 
+such as error handling, and then adding in simpler behaviors,
+until sufficient coverage was acheived.
+The basic philosophy at the time was not to fix anything not broken.
+
+This has led to the models being somewhat over-engineered,
+particularly when it comes to scenario generation.  
+Also the API call models have perhaps a bit too code devoted 
+to system behaviour.
 
 Model Refactoring
 ^^^^^^^^^^^^^^^^^
 
-Lots of common material!
+There is a case to be made to perform some model refactoring.
+Some of this would address the model state issues above.
+Other refactoring would extract the common model material out,
+to be put into files that could be included.
+This includes the binary semaphore models,
+and the parts modelling preemption and waiting while blocked
 
 Test Code Refactoring
 ^^^^^^^^^^^^^^^^^^^^^
 
-Need to fit with ``tx-support.c''
+During the qualifcation activity,
+a new file ``tx-support.c`` was added to the RTEMS validation testsuite codebase.
+This gathers C test support functions used by most of the tests.
+The contents of the ``tr-<modelname>.h`` and ``tr-<modelname>.c``
+files in particular should be brought in line with ``tx-support.c``.
 
 
 
