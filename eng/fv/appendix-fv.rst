@@ -1736,7 +1736,7 @@ and the parts modelling preemption and waiting while blocked.
 Test Code Refactoring
 ^^^^^^^^^^^^^^^^^^^^^
 
-During the qualifcation activity,
+During the qualification activity,
 a new file ``tx-support.c`` was added to the RTEMS validation testsuite codebase.
 This gathers C test support functions used by most of the tests.
 The contents of the ``tr-<modelname>.h`` and ``tr-<modelname>.c``
