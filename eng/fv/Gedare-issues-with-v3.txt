@@ -1,0 +1,106 @@
+Gedare-PR-issues-for-v3
+
+
+Inline notes provided. 
+The writing style of some sections needs to be tweaked 
+to be less report-oriented ("We did/do this") 
+and more manual-oriented ("This is how to do...")
+<<NOTED>>
+
+
+.gitignore
+---------
+lines 5-6
+Don't add IDE-specific ignores here. They belong better in your personal .gitignore.
+<<DONE>>
+
+approaches
+----------
+
+lines 14-17
+Too specific to the ESA project's language probably. Better to be generic "formats useful for qualification." maybe
+<<DONE>>
+
+line 23
+for for
+<<DONE>>
+
+lines 24-27
+better to refer explicitly to the section name and document name, 
+in case this ever moves, or that ever moves.
+<<DONE>>
+
+lines 28-31
+The use of "we" to refer to the performers of the activity is not appropriate 
+in a manual. That is part of the presentation problem here that makes it read 
+more like a report than a manual. In the manuals, "we" is probably only useful 
+to refer to the RTEMS Project, if at all. It's not really appropriate at all 
+though.
+<<DONE>>
+
+lines 171-174
+It may be useful to refer explicitly to "RTEMS pre-qualification" ? 
+This is probably a general sub-project that needs to be defined, 
+to encapsulate both any refernces to ESA-sponsored activity, 
+and to all other activity related to qualification support 
+provided via RTEMS Project.
+<<DEFER>>
+
+
+maintenance
+-----------
+
+lines 7-10
+That was something I thought I had removed - it was something you raised the first time around.
+<<DONE>>  (again!)
+
+appendix-fv
+-----------
+
+line 9 
+I think there should be a consistent way of acknowledging suport, 
+but at any rate this seems out of place.
+AB: will remove
+<<DONE>>
+
+line 13
+Not appropriate to specifically call out sponsors in sections of our manuals.
+<<DONE>> (incl. line 17)
+
+lines 34-35
+This all reads like a project report, rather than a manual. 
+Although the references to the completed MSc dissertations are appreciated and 
+useful, they should be better integrated where the work that was done is 
+described within the manual itself. The start of this appendix should better 
+explain what is being shown here, i.e., 
+the detailed examples of the above modelings. 
+You might also link to the relevant sections.
+<<NOTED, REMOVED REFS>>
+
+lines 110-113
+links to the docs don't work properly in a release, 
+because once you release it is no longer master branch. 
+I don't remember the recommended way, 
+but I believe it is preferred to simply state the name and section of the 
+relevant doc instead.
+<<DONE>>
+
+threadq-modelling
+-----------------
+
+lines 95-98
+excess vertical whitespace should be avoided.
+<<DONE>>
+
+tool-setup
+----------
+
+lines 22-25
+this is repetitive to some text in the Promela section.
+AB: ok - I'll remove one - perhaps from the Promela section
+<<DONE>> removed from approaches section 
+
+lines 64-47
+remove this text. 
+you may mention that there are scripts available to assist this within rtems-central.
+<<DONE>>
